@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: svt
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/svt
+    password: ${POSTGRES_PASSWORD}
+    username: ${POSTGRES_USERNAME}
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
