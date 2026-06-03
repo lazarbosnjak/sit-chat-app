@@ -26,6 +26,12 @@ public class Message {
     @ManyToOne(optional = false)
     private Chat chat;
 
+    @ManyToOne
+    private Message replyTo;
+
+    @ManyToOne
+    private Message forwardedFrom;
+
     @CreatedDate
     private Instant createdAt;
 
