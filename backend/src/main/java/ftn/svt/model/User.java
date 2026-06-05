@@ -2,14 +2,20 @@ package ftn.svt.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
+@EntityListeners(AuditingEntityListener.class)
 @Entity(name = "users")
 public class User {
 
@@ -39,7 +45,10 @@ public class User {
 
     private String pfpUrl;
 
-    private boolean enabled = true;
+    private boolean enabled;
+
+    @CreatedDate
+    private Instant createdAt;
 
     public String getFullName() {
         return firstName + " " + lastName;

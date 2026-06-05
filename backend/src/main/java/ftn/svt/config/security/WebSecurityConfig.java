@@ -29,11 +29,11 @@ public class WebSecurityConfig {
     private final JwtUtils jwtUtils;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.sessionManagement(sessionCfg -> sessionCfg.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(new JwtAuthFilter(jwtUtils, userDetailsService()), BasicAuthenticationFilter.class);
+        http.authenticationProvider(authenticationProvider(userDetailsService));
+        http.addFilterBefore(new JwtAuthFilter(jwtUtils, userDetailsService), BasicAuthenticationFilter.class);
         // TODO: add cors
 
         return http.build();
@@ -45,16 +45,16 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider daoAuthProvider = new DaoAuthenticationProvider(userDetailsService());
+    public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService) {
+        DaoAuthenticationProvider daoAuthProvider = new DaoAuthenticationProvider(userDetailsService);
         daoAuthProvider.setPasswordEncoder(passwordEncoder());
         return daoAuthProvider;
     }
 
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return new UserDetailsServiceImpl();
-    }
+//    @Bean
+//    public UserDetailsService userDetailsService() {
+//        return new UserDetailsServiceImpl();
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
