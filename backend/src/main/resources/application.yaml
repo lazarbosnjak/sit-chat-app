@@ -13,3 +13,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+  jackson:
+    time-zone: UTC
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 3600
