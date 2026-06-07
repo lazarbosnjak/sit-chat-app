@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration
@@ -30,10 +32,18 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.sessionManagement(sessionCfg -> sessionCfg.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        http.authenticationProvider(authenticationProvider(userDetailsService));
-        http.addFilterBefore(new JwtAuthFilter(jwtUtils, userDetailsService), BasicAuthenticationFilter.class);
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(sessionCfg -> sessionCfg.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider(userDetailsService))
+                .authorizeHttpRequests(matcherRegistry -> matcherRegistry
+                        .requestMatchers("/api/v0/auth/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(
+                        new JwtAuthFilter(jwtUtils, userDetailsService),
+                        UsernamePasswordAuthenticationFilter.class
+                );
         // TODO: add cors
 
         return http.build();
@@ -50,11 +60,6 @@ public class WebSecurityConfig {
         daoAuthProvider.setPasswordEncoder(passwordEncoder());
         return daoAuthProvider;
     }
-
-//    @Bean
-//    public UserDetailsService userDetailsService() {
-//        return new UserDetailsServiceImpl();
-//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
