@@ -33,7 +33,7 @@ public class AuthController {
     public ResponseEntity<String> login(@RequestBody @Valid LoginRequest dto) {
         try {
             String token = authService.login(dto);
-            return ResponseEntity.ok(token);
+            return ResponseEntity.status(HttpStatus.OK).header("Content-Type", "text/plain").body(token);
         } catch (UsernameNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
