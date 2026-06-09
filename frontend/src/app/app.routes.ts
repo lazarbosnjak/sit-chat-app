@@ -10,13 +10,9 @@ export const routes: Routes = [
     component: HomeComponent,
     canActivate: [authGuard],
   },
-  // TODO: make /auth path where login and register are its children
   {
-    path: 'auth/login',
-    component: LoginComponent,
-  },
-  {
-    path: 'auth/register',
-    component: RegisterComponent,
+    path: 'auth',
+    loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
+    // TODO: add guard to prevent going to auth if logged in
   },
 ];
