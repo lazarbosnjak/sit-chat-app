@@ -13,6 +13,7 @@ interface JwtPayload {
 })
 export class AuthService {
   private router = inject(Router);
+  private readonly TOKEN_KEY = 'token';
 
   isAuthenticated(): boolean {
     const token = this.getToken();
@@ -23,25 +24,35 @@ export class AuthService {
 
     try {
       const payload = jwtDecode<JwtPayload>(token);
-      return payload.exp * 1000 > Date.now();
+      const expired = payload.exp * 1000 < Date.now();
+      if (!expired) {
+        return true;
+      } else {
+        this.removeToken();
+        return false;
+      }
     } catch (error) {
+      this.removeToken();
       console.error(error);
       return false;
     }
   }
 
   getToken(): string | null {
-    const tokenKey = 'token';
-    return localStorage.getItem(tokenKey);
+    return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  removeToken(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
   }
 
   login(res: string) {
-    localStorage.setItem('token', res);
+    localStorage.setItem(this.TOKEN_KEY, res);
     this.router.navigate(['/']);
   }
 
   logout() {
-    localStorage.removeItem('token');
+    this.removeToken();
     this.router.navigate(['/auth/login']);
   }
 }

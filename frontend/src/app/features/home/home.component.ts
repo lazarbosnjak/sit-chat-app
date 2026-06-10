@@ -1,24 +1,26 @@
-import { Component } from '@angular/core';
-import { jwtDecode } from 'jwt-decode';
+import { HttpClient } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
 
-interface JwtPayload {
-  sub: string;
-  role: string;
-  exp: number;
+interface User {
+  username: string;
 }
 
 @Component({
   templateUrl: './home.component.html',
 })
 export class HomeComponent {
-  username = '';
+  private http = inject(HttpClient);
+  username = signal('');
 
   ngOnInit() {
-    const token = localStorage.getItem('token');
-
-    if (token) {
-      const payload = jwtDecode<JwtPayload>(token);
-      this.username = payload.sub;
-    }
+    this.http.get<User>('http://localhost:8080/api/v0/users/me').subscribe({
+      next: (user) => {
+        console.log(user.username);
+        this.username.set(user.username);
+      },
+      error: (err: Error) => {
+        console.error(err);
+      },
+    });
   }
 }
