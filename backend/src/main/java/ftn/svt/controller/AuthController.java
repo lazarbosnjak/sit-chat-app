@@ -1,6 +1,5 @@
 package ftn.svt.controller;
 
-import ftn.svt.model.User;
 import ftn.svt.model.dto.auth.LoginRequest;
 import ftn.svt.model.dto.auth.RegistrationRequest;
 import ftn.svt.service.AuthService;
@@ -23,10 +22,10 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegistrationRequest dto) {
-        var registrationResponse = authService.register(dto);
+        var responseBody = authService.register(dto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(registrationResponse);
+                .body(responseBody);
     }
 
     @PostMapping("/login")

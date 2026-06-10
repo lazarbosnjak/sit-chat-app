@@ -49,6 +49,7 @@ public class WebSecurityConfig {
                 )
                 .authorizeHttpRequests(matcherRegistry -> matcherRegistry
                         .requestMatchers("/api/v0/auth/**").permitAll()
+                        .requestMatchers("/api/v0/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
