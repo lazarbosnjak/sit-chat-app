@@ -10,6 +10,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { environment as env } from '@environments/environment';
 
 @Component({
   templateUrl: './register.component.html',
@@ -37,16 +38,14 @@ export class RegisterComponent {
   );
 
   handleSubmit() {
-    this.http
-      .post('http://localhost:8080/api/v0/auth/register', this.registerForm.value)
-      .subscribe({
-        next: () => {
-          alert('Success');
-        },
-        error: () => {
-          alert('Fail');
-        },
-      });
+    this.http.post(`${env.apiUrl}/auth/register`, this.registerForm.value).subscribe({
+      next: () => {
+        alert('Success');
+      },
+      error: () => {
+        alert('Fail');
+      },
+    });
   }
 
   isInvalid(name: string): boolean {

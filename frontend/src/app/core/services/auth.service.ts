@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { TOKEN_KEY } from '@core/constants/auth.constants';
 import { jwtDecode } from 'jwt-decode';
 
 interface JwtPayload {
@@ -13,7 +14,6 @@ interface JwtPayload {
 })
 export class AuthService {
   private router = inject(Router);
-  private readonly TOKEN_KEY = 'token';
 
   isAuthenticated(): boolean {
     const token = this.getToken();
@@ -39,15 +39,15 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY);
   }
 
   removeToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   }
 
   login(res: string) {
-    localStorage.setItem(this.TOKEN_KEY, res);
+    localStorage.setItem(TOKEN_KEY, res);
     this.router.navigate(['/']);
   }
 

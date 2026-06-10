@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
+import { environment as env } from '@environments/environment';
 
 interface User {
   username: string;
@@ -13,7 +14,7 @@ export class HomeComponent {
   username = signal('');
 
   ngOnInit() {
-    this.http.get<User>('http://localhost:8080/api/v0/users/me').subscribe({
+    this.http.get<User>(`${env.apiUrl}/users/me`).subscribe({
       next: (user) => {
         console.log(user.username);
         this.username.set(user.username);
