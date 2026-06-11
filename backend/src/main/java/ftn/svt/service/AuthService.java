@@ -3,7 +3,6 @@ package ftn.svt.service;
 import ftn.svt.config.security.JwtUtils;
 import ftn.svt.model.RegistrationRequestForm;
 import ftn.svt.model.RegistrationRequestFormStatus;
-import ftn.svt.model.UserRole;
 import ftn.svt.model.dto.auth.LoginRequest;
 import ftn.svt.model.dto.auth.RegistrationRequest;
 import ftn.svt.repository.RegistrationRequestFormRepository;
@@ -39,10 +38,9 @@ public class AuthService {
             throw new RuntimeException("Passwords dont match");
         }
         RegistrationRequestForm form = RegistrationRequestForm.builder()
-                .id(null)
+                .requestId(null)
                 .username(dto.username())
                 .password(passwordEncoder.encode(dto.password()))
-                .role(UserRole.USER)
                 .firstName(dto.firstName())
                 .lastName(dto.lastName())
                 .phoneNumber(dto.phoneNumber())

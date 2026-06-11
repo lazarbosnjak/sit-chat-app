@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public record RegistrationResponse(
 
-        UUID id,
+        UUID requestId,
 
         @NotBlank
         @Size(min = 3, max = 50)
@@ -34,7 +34,7 @@ public record RegistrationResponse(
 ) {
     public static RegistrationResponse from(RegistrationRequestForm form) {
         return new RegistrationResponse(
-                form.getId(),
+                form.getRequestId(),
                 form.getUsername(),
                 form.getFirstName(),
                 form.getLastName(),

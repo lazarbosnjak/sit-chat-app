@@ -21,16 +21,13 @@ public class RegistrationRequestForm {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private UUID requestId;
 
     @Column(nullable = false)
     private String username;
 
     @Column(nullable = false)
     private String password;
-
-    @Enumerated(EnumType.STRING)
-    private UserRole role;
 
     @Column(nullable = false)
     private String firstName;
