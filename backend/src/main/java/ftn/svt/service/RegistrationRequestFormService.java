@@ -3,6 +3,7 @@ package ftn.svt.service;
 import ftn.svt.model.RegistrationRequestForm;
 import ftn.svt.model.RegistrationRequestFormStatus;
 import ftn.svt.model.User;
+import ftn.svt.model.UserRole;
 import ftn.svt.model.dto.auth.RegistrationResponse;
 import ftn.svt.repository.RegistrationRequestFormRepository;
 import ftn.svt.repository.UserRepository;
@@ -37,6 +38,7 @@ public class RegistrationRequestFormService {
                 .id(null)
                 .username(form.getUsername())
                 .password(form.getPassword())
+                .role(UserRole.USER)
                 .firstName(form.getFirstName())
                 .lastName(form.getLastName())
                 .phoneNumber(form.getPhoneNumber())

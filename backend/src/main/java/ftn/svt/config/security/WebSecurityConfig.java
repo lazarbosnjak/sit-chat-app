@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.Instant;
 import java.util.List;
 
 @Configuration
@@ -42,9 +43,41 @@ public class WebSecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, e) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+
+                            response.getWriter().write("""
+                                            {
+                                              "timestamp": "%s",
+                                              "status": 401,
+                                              "error": "Unauthorized",
+                                              "message": "%s",
+                                              "path": "%s"
+                                            }
+                                            """.formatted(
+                                            Instant.now(),
+                                            e.getMessage(),
+                                            request.getRequestURI()
+                                    )
+                            );
                         })
                         .accessDeniedHandler((request, response, e) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+
+                            response.getWriter().write("""
+                                            {
+                                              "timestamp": "%s",
+                                              "status": 403,
+                                              "error": "Forbidden",
+                                              "message": "%s",
+                                              "path": "%s"
+                                            }
+                                            """.formatted(
+                                            Instant.now(),
+                                            e.getMessage(),
+                                            request.getRequestURI()
+                                    )
+                            );
                         })
                 )
                 .authorizeHttpRequests(matcherRegistry -> matcherRegistry
@@ -88,7 +121,7 @@ public class WebSecurityConfig {
         config.setAllowedMethods(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
 
-        UrlBasedCorsConfigurationSource source =  new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
