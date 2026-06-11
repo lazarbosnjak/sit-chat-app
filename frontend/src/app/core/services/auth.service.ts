@@ -5,7 +5,9 @@ import { jwtDecode } from 'jwt-decode';
 
 interface JwtPayload {
   sub: string;
-  role: string;
+  role: {
+    authority: string;
+  };
   exp: number;
 }
 
@@ -54,5 +56,14 @@ export class AuthService {
   logout() {
     this.removeToken();
     this.router.navigate(['/auth/login']);
+  }
+
+  hasRole(role: string): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+    const payload = jwtDecode<JwtPayload>(token);
+    return payload.role.authority === role.toLocaleUpperCase();
   }
 }
