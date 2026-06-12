@@ -30,6 +30,9 @@ public class RegistrationRequestFormService {
     public void approve(UUID id) {
         RegistrationRequestForm form = formRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("registration request with this id not found"));
+        if (!form.getStatus().equals(RegistrationRequestFormStatus.IN_PROCESS)) {
+            return;
+        }
 
         form.setStatus(RegistrationRequestFormStatus.APPROVED);
         formRepository.save(form);
@@ -55,6 +58,9 @@ public class RegistrationRequestFormService {
         RegistrationRequestForm form = formRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("registration request with this id not found"));
 
+        if (!form.getStatus().equals(RegistrationRequestFormStatus.IN_PROCESS)) {
+            return;
+        }
         form.setStatus(RegistrationRequestFormStatus.REJECTED);
         formRepository.save(form);
     }

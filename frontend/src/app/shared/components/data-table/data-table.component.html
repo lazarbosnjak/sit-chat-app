@@ -1,0 +1,44 @@
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          @for (column of columns(); track column.label) {
+            <th class="px-4 py-3 text-left font-semibold text-gray-700">
+              {{ column.label }}
+            </th>
+          }
+          @if (actionTemplate()) {
+            <th class="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
+          }
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-gray-100 bg-white">
+        @for (row of rows(); track $index) {
+          <tr class="hover:bg-gray-50">
+            @for (column of columns(); track column.label) {
+              <td class="px-4 py-3 text-gray-700">
+                {{ row[column.key] }}
+              </td>
+            }
+            @if (actionTemplate()) {
+              <td class="px-4 py-3 text-right">
+                <ng-container
+                  [ngTemplateOutlet]="actionTemplate()"
+                  [ngTemplateOutletContext]="{ $implicit: row }"
+                />
+              </td>
+            }
+          </tr>
+        } @empty {
+          <tr>
+            <td class="px-4 py-6 text-center text-gray-500" [attr.colspan]="columns().length">
+              {{ emptyMessage() }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

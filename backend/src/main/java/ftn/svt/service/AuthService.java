@@ -37,6 +37,10 @@ public class AuthService {
             // TODO: return bad request from this
             throw new RuntimeException("Passwords dont match");
         }
+        if (userRepository.findByUsername(dto.username()).isPresent()) {
+            // TODO: return bad request from this
+            throw new RuntimeException("Username already exists");
+        }
         RegistrationRequestForm form = RegistrationRequestForm.builder()
                 .requestId(null)
                 .username(dto.username())

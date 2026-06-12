@@ -1,3 +1,30 @@
 <div>
   <h1>Registration requests</h1>
+  <data-table
+    [columns]="columns"
+    [rows]="regReqs()"
+    [emptyMessage]="'/'"
+    [actionTemplate]="regReqActions"
+  />
+  <ng-template #regReqActions let-regReq>
+    @if (regReq.status === 'IN_PROCESS') {
+      <div class="flex justify-center gap-2">
+        <button
+          type="button"
+          class="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+          (click)="approve(regReq)"
+        >
+          Approve
+        </button>
+
+        <button
+          type="button"
+          class="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+          (click)="reject(regReq)"
+        >
+          Reject
+        </button>
+      </div>
+    }
+  </ng-template>
 </div>
