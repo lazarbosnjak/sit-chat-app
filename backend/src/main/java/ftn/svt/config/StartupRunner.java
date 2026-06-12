@@ -21,7 +21,7 @@ public class StartupRunner implements CommandLineRunner {
             return;
         }
 
-        User user = User.builder()
+        User admin = User.builder()
         .id(null)
         .username("admin")
         .password(passwordEncoder.encode("admin123"))
@@ -34,6 +34,28 @@ public class StartupRunner implements CommandLineRunner {
         .enabled(true)
         .createdAt(null)
         .build();
+
+        User savedAdmin = userRepository.save(admin);
+        System.out.println(savedAdmin);
+
+
+        if (userRepository.findByUsername("lazarb").isPresent()) {
+            return;
+        }
+
+        User user = User.builder()
+                .id(null)
+                .username("user")
+                .password(passwordEncoder.encode("password123"))
+                .role(UserRole.USER)
+                .firstName("Branko")
+                .lastName("Brankovic")
+                .phoneNumber("+381611111111")
+                .email("branko@brankovic.com")
+                .pfpUrl(null)
+                .enabled(true)
+                .createdAt(null)
+                .build();
 
         User savedUser = userRepository.save(user);
         System.out.println(savedUser);

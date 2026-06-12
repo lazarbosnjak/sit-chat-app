@@ -1,6 +1,7 @@
 package ftn.svt.service;
 
 import ftn.svt.config.security.JwtUtils;
+import ftn.svt.exception.ApiException;
 import ftn.svt.model.RegistrationRequestForm;
 import ftn.svt.model.RegistrationRequestFormStatus;
 import ftn.svt.model.dto.auth.LoginRequest;
@@ -34,12 +35,10 @@ public class AuthService {
 
     public Map<String, String> register(RegistrationRequest dto) {
         if (!dto.password().trim().equals(dto.repeatedPassword().trim())) {
-            // TODO: return bad request from this
-            throw new RuntimeException("Passwords dont match");
+            throw ApiException.badRequest("Passwords dont match");
         }
         if (userRepository.findByUsername(dto.username()).isPresent()) {
-            // TODO: return bad request from this
-            throw new RuntimeException("Username already exists");
+            throw ApiException.conflict("Username already exists");
         }
         RegistrationRequestForm form = RegistrationRequestForm.builder()
                 .requestId(null)
@@ -53,13 +52,13 @@ public class AuthService {
                 .status(RegistrationRequestFormStatus.IN_PROCESS)
                 .build();
 
-        formRepository.save(form);
-        // TODO: Error check if this fails
+        var savedForm = formRepository.save(form);
 
         String successMsg =  "Your registration request has been sent to administrators for approval. You will be e-mailed the result.";
         Map<String, String> res = Map.of(
                 "message", successMsg,
-                "timestamp", Instant.now().toString()
+                "timestamp", Instant.now().toString(),
+                "requestId", savedForm.getRequestId().toString()
         );
 
         return res;

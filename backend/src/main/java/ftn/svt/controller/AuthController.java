@@ -24,7 +24,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody @Valid RegistrationRequest dto) {
         var responseBody = authService.register(dto);
         return ResponseEntity
-                .status(HttpStatus.CREATED)
+                .status(HttpStatus.OK)
                 .body(responseBody);
     }
 

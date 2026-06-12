@@ -1,5 +1,6 @@
 package ftn.svt.service;
 
+import ftn.svt.exception.ApiException;
 import ftn.svt.model.RegistrationRequestForm;
 import ftn.svt.model.RegistrationRequestFormStatus;
 import ftn.svt.model.User;
@@ -29,9 +30,9 @@ public class RegistrationRequestFormService {
 
     public void approve(UUID id) {
         RegistrationRequestForm form = formRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("registration request with this id not found"));
-        if (!form.getStatus().equals(RegistrationRequestFormStatus.IN_PROCESS)) {
-            return;
+                .orElseThrow(() -> ApiException.notFound("registration request with this id not found"));
+        if (form.getStatus() != RegistrationRequestFormStatus.IN_PROCESS) {
+            throw ApiException.conflict("Registration request has already been processed");
         }
 
         form.setStatus(RegistrationRequestFormStatus.APPROVED);
@@ -56,10 +57,10 @@ public class RegistrationRequestFormService {
 
     public void reject(UUID id) {
         RegistrationRequestForm form = formRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("registration request with this id not found"));
+                .orElseThrow(() -> ApiException.notFound("registration request with this id not found"));
 
-        if (!form.getStatus().equals(RegistrationRequestFormStatus.IN_PROCESS)) {
-            return;
+        if (form.getStatus() != RegistrationRequestFormStatus.IN_PROCESS) {
+            throw ApiException.conflict("Registration request has already been processed");
         }
         form.setStatus(RegistrationRequestFormStatus.REJECTED);
         formRepository.save(form);
