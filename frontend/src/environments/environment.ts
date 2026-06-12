@@ -1,3 +1,3 @@
 export const environment = {
-  apiUrl: 'svt.lazarb.dev',
+  apiUrl: 'https://svt.lazarb.dev/api/v0',
 };
