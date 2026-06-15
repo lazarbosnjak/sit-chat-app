@@ -1,6 +1,5 @@
 package ftn.svt.config.security;
 
-import ftn.svt.service.UserDetailsServiceImpl;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -58,7 +57,7 @@ public class JwtUtils {
         return expDate != null && expDate.toInstant().isBefore(now);
     }
 
-    public boolean validateToken(String token, UserDetails userDetails) {
+    public boolean isTokenValid(String token, UserDetails userDetails) {
        String username = getUsernameFromToken(token);
        return username != null
                && username.equals(userDetails.getUsername())

@@ -82,6 +82,7 @@ public class WebSecurityConfig {
                 )
                 .authorizeHttpRequests(matcherRegistry -> matcherRegistry
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/ws").permitAll()
                         .requestMatchers("/api/v0/auth/**").permitAll()
                         .requestMatchers("/api/v0/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
