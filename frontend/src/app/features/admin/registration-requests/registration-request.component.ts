@@ -40,7 +40,7 @@ export class RegistrationRequestsComponent {
 
   ngOnInit() {
     this.http
-      .get<Page<RegistrationRequest[]>>(`${env.apiUrl}/admin/registration-requests`)
+      .get<Page<RegistrationRequest>>(`${env.apiUrl}/admin/registration-requests`)
       .subscribe({
         next: (res) => {
           this.regReqs.set(res.content);

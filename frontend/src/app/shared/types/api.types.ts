@@ -1,5 +1,5 @@
 export interface Page<T> {
-  content: T;
+  content: T[];
   empty: boolean;
   first: boolean;
   last: boolean;
