@@ -39,3 +39,19 @@ export interface User {
   createdAt: Date;
   enabled: boolean;
 }
+
+export interface Chat {
+  id: string;
+  name: string;
+  imageUrl: string;
+  type: 'DIRECT' | 'GROUP';
+  createdAt: Date;
+  members: ChatMember[];
+}
+
+export interface ChatMember {
+  userId: string;
+  username: string;
+  fullName: string;
+  role: 'ADMIN' | 'MEMBER';
+}

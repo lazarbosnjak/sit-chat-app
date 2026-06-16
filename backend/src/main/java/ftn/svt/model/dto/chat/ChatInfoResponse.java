@@ -27,6 +27,7 @@ public record ChatInfoResponse(
                         .map(member -> new ChatMemberInfoResponse(
                                 member.getId(),
                                 member.getUser().getUsername(),
+                                member.getUser().getFullName(),
                                 member.getRole()
                         )).collect(Collectors.toSet())
         );

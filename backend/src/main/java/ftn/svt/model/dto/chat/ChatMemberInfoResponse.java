@@ -7,6 +7,7 @@ import java.util.UUID;
 public record ChatMemberInfoResponse(
         UUID userId,
         String username,
+        String fullName,
         ChatRole role
 ) {
 }

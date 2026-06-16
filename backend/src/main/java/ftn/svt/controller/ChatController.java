@@ -8,12 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.Collection;
 
 @RestController
 @RequestMapping("/api/v0/chats")
@@ -32,6 +30,14 @@ public class ChatController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(res);
+    }
+
+    // TODO: Add interceptor that only allows people in the chat to request this
+    @GetMapping("/me")
+    public ResponseEntity<?> getMine(Principal principal) {
+        Collection<Chat> chats = chatService.getAllByPrincipal(principal);
+        var res = chats.stream().map(ChatInfoResponse::from).toList();
+        return ResponseEntity.ok(res);
     }
 
 }

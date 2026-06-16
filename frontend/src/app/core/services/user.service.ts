@@ -7,10 +7,23 @@ import { firstValueFrom } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
-export class ChatService {
+export class UserService {
   private readonly http = inject(HttpClient);
+  private readonly LOCAL_STORAGE_USER_KEY = 'current_user';
 
-  async getLoggedInUser(): Promise<User> {
-    return firstValueFrom(this.http.get<User>(`${env.apiUrl}/users/me`));
+  getLoggedInUser(): User {
+    const lsItem = localStorage.getItem(this.LOCAL_STORAGE_USER_KEY);
+    return JSON.parse(lsItem!) as User;
+  }
+
+  async setUserToLocalStorage(user?: User): Promise<void> {
+    if (!user) {
+      user = await firstValueFrom(this.http.get<User>(`${env.apiUrl}/users/me`));
+    }
+    localStorage.setItem(this.LOCAL_STORAGE_USER_KEY, JSON.stringify(user));
+  }
+
+  removeUserFromLocalStorage(): void {
+    localStorage.removeItem(this.LOCAL_STORAGE_USER_KEY);
   }
 }

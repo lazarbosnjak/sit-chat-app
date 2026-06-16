@@ -23,7 +23,7 @@ export class LoginComponent {
         responseType: 'text',
       })
       .subscribe({
-        next: (res) => {
+        next: async (res) => {
           this.authService.login(res);
         },
         error: (err) => {

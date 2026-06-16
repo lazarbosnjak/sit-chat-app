@@ -4,8 +4,10 @@ import { form, FormField, FormRoot } from '@angular/forms/signals';
 import { AuthService } from '@core/services/auth.service';
 import { ChatService } from '@core/services/chat.service';
 import { StompService } from '@core/services/stomp.service';
+import { UserService } from '@core/services/user.service';
 import { environment as env } from '@environments/environment';
 import { ModalComponent } from '@shared/components/modal/modal.component';
+import { Chat } from '@shared/types/api.types';
 import { StompSubscription } from '@stomp/stompjs';
 
 interface User {
@@ -26,11 +28,14 @@ interface User {
   imports: [FormField, ModalComponent],
 })
 export class HomeComponent {
-  private http = inject(HttpClient);
-  readonly authService = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly chatService = inject(ChatService);
+  readonly userService = inject(UserService);
+  readonly authService = inject(AuthService);
 
-  username = signal('');
+  currentUser = signal<User | null>(null);
+
+  chats = signal<Chat[]>([]);
 
   // private readonly destroyRef = inject(DestroyRef);
   // chatModel = signal({
@@ -49,15 +54,16 @@ export class HomeComponent {
   // private readonly stompService = inject(StompService);
   // private chatSubscription: StompSubscription | null = null;
 
-  ngOnInit() {
-    this.http.get<User>(`${env.apiUrl}/users/me`).subscribe({
-      next: (user) => {
-        this.username.set(user.username);
-      },
-      error: (err: Error) => {
-        console.error(err);
-      },
-    });
+  async ngOnInit() {
+    this.currentUser.set(this.userService.getLoggedInUser());
+
+    try {
+      const chats = await this.chatService.getMyChats();
+      this.chats.set(chats);
+    } catch (err) {
+      console.error(err);
+      // TODO: Modal for error handling
+    }
 
     // this.stompService.connect(() => {
     //   this.chatSubscription = this.stompService.subscribe('/topic/messages', (message) => {
@@ -69,6 +75,7 @@ export class HomeComponent {
     //   });
     // });
   }
+
   //
   // sendMessage(content: string) {
   //   this.stompService.publish('/app/chat', content);
@@ -134,9 +141,8 @@ export class HomeComponent {
   async createNewDirectChat(userId: string) {
     try {
       const chat = await this.chatService.createDirectChat(userId);
-      // this.searchResults.update((old) => old.filter((user) => user.id !== userId));
+      this.chats.update((old) => [...old, chat]);
       this.closeNewChatModal();
-      alert(chat.members[0].username);
     } catch (err) {
       console.error(err);
     }

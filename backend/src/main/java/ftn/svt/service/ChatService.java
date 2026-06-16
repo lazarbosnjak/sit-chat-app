@@ -19,6 +19,7 @@ public class ChatService {
 
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
 
     @Transactional
     public Chat create(ChatCreateRequest dto, Principal principal) {
@@ -74,5 +75,10 @@ public class ChatService {
         savedChat.setMembers(members);
         return chatRepository.save(savedChat);
 
+    }
+
+    public Collection<Chat> getAllByPrincipal(Principal principal) {
+        User user = userService.findByUsername(principal.getName());
+        return chatRepository.findAllWithUserId(user.getId());
     }
 }

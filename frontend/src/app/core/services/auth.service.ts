@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { TOKEN_KEY } from '@core/constants/auth.constants';
+import { UserService } from '@core/services/user.service';
 import { jwtDecode } from 'jwt-decode';
 
 interface JwtPayload {
@@ -16,6 +17,7 @@ interface JwtPayload {
 })
 export class AuthService {
   private router = inject(Router);
+  private readonly userService = inject(UserService);
 
   isAuthenticated(): boolean {
     const token = this.getToken();
@@ -30,11 +32,11 @@ export class AuthService {
       if (!expired) {
         return true;
       } else {
-        this.removeToken();
+        this.logout();
         return false;
       }
     } catch (error) {
-      this.removeToken();
+      this.logout();
       console.error(error);
       return false;
     }
@@ -48,13 +50,15 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
   }
 
-  login(res: string) {
+  async login(res: string) {
     localStorage.setItem(TOKEN_KEY, res);
+    await this.userService.setUserToLocalStorage();
     this.router.navigate(['/']);
   }
 
   logout() {
     this.removeToken();
+    this.userService.removeUserFromLocalStorage();
     this.router.navigate(['/auth/login']);
   }
 
