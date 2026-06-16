@@ -16,4 +16,27 @@ public class ChatWebSocketController {
 
         return username + ": " + message;
     }
+
+//    @MessageMapping("/chat.send")
+//    public void sendMessage(ChatMessageRequest request, Principal principal) {
+//        String senderUsername = principal.getName();
+//
+//        ChatMessageResponse message = chatService.saveAndBuildMessage(
+//                senderUsername,
+//                request.recipientUsername(),
+//                request.content()
+//        );
+//
+//        messagingTemplate.convertAndSendToUser(
+//                request.recipientUsername(),
+//                "/queue/messages",
+//                message
+//        );
+//
+//        messagingTemplate.convertAndSendToUser(
+//                senderUsername,
+//                "/queue/messages",
+//                message
+//        );
+//    }
 }
