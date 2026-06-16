@@ -60,7 +60,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         String username = jwtUtils.getUsernameFromToken(token);
 
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
                         if (jwtUtils.isTokenValid(token, userDetails)) {
                             UsernamePasswordAuthenticationToken authentication =
                                     new UsernamePasswordAuthenticationToken(

@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -54,7 +55,7 @@ public class AuthService {
 
         var savedForm = formRepository.save(form);
 
-        String successMsg =  "Your registration request has been sent to administrators for approval. You will be e-mailed the result.";
+        String successMsg = "Your registration request has been sent to administrators for approval. You will be e-mailed the result.";
         Map<String, String> res = Map.of(
                 "message", successMsg,
                 "timestamp", Instant.now().toString(),
@@ -69,7 +70,12 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(dto.username(), dto.password());
         Authentication authentication = authenticationManager.authenticate(authToken);
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        UserDetails userDetails = userDetailsService.loadUserByUsername(dto.username());
-        return jwtUtils.generateToken(userDetails);
+
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(dto.username());
+            return jwtUtils.generateToken(userDetails);
+        } catch (UsernameNotFoundException ex) {
+            throw ApiException.unauthorized(ex.getMessage());
+        }
     }
 }

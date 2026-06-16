@@ -5,12 +5,13 @@ import ftn.svt.model.User;
 import ftn.svt.model.dto.user.UserInfoDTO;
 import ftn.svt.service.UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,13 +24,14 @@ public class UserController {
     @GetMapping
     public ResponseEntity<?> getAllFiltered(
             @RequestParam() String search,
-            Pageable pageable
+            Principal principal
     ) {
-        if (search.isEmpty()) {
+        if (search.isBlank()) {
             throw ApiException.badRequest("search must be at least 1 character long");
         }
-        Page<User> users = userService.getAllFiltered(search, pageable);
-        Page<UserInfoDTO> dtos = users.map(UserInfoDTO::from);
+
+        Collection<User> users = userService.getAllFiltered(search, principal);
+        List<UserInfoDTO> dtos = users.stream().map(UserInfoDTO::from).toList();
         return ResponseEntity.ok(dtos);
     }
 
@@ -37,6 +39,7 @@ public class UserController {
     public ResponseEntity<?> getMe(Authentication auth) {
         User user = userService.findByUsername(auth.getName());
         UserInfoDTO dto = new UserInfoDTO(
+                user.getId(),
                 user.getUsername(),
                 user.getFirstName(),
                 user.getLastName(),
@@ -54,6 +57,7 @@ public class UserController {
     public ResponseEntity<?> getOneById(@PathVariable UUID id) {
         User user = userService.findOneById(id);
         UserInfoDTO dto = new UserInfoDTO(
+                user.getId(),
                 user.getUsername(),
                 user.getFirstName(),
                 user.getLastName(),

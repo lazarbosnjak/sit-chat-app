@@ -3,8 +3,11 @@ package ftn.svt.model.dto.user;
 import ftn.svt.model.User;
 
 import java.time.Instant;
+import java.util.UUID;
 
 public record UserInfoDTO(
+        UUID id,
+
         String username,
 
         String firstName,
@@ -25,6 +28,7 @@ public record UserInfoDTO(
 ) {
     public static UserInfoDTO from(User user) {
         return new UserInfoDTO(
+                user.getId(),
                 user.getUsername(),
                 user.getFirstName(),
                 user.getLastName(),

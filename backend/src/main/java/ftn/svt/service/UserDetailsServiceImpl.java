@@ -1,6 +1,7 @@
 package ftn.svt.service;
 
 import ftn.svt.model.User;
+import ftn.svt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
@@ -20,16 +21,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private UserService userService;
+    private UserRepository userRepository;
 
     @Autowired
-    public UserDetailsServiceImpl(UserService userService) {
-        this.userService = userService;
+    public UserDetailsServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Override
+    // FIXME: UsernameNotFoundException must be caught in GlobalExceptionHandler
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userService.findByUsername(username);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User with username: " + username + "not found."));
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), user.isEnabled(),
                 true, true, true, getGrantedAuthorities(user)
