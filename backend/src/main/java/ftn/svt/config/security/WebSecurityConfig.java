@@ -1,6 +1,5 @@
 package ftn.svt.config.security;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +21,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.time.Instant;
 import java.util.List;
 
 @Configuration
@@ -34,51 +32,20 @@ public class WebSecurityConfig {
     private final JwtUtils jwtUtils;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, UserDetailsService userDetailsService) throws Exception {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            UserDetailsService userDetailsService,
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+            JwtAccessDeniedHandler jwtAccessDeniedHandler
+    ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authenticationProvider(authenticationProvider(userDetailsService))
                 .sessionManagement(sessionCfg -> sessionCfg.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, e) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json");
-
-                            response.getWriter().write("""
-                                            {
-                                              "timestamp": "%s",
-                                              "status": 401,
-                                              "error": "Unauthorized",
-                                              "message": "%s",
-                                              "path": "%s"
-                                            }
-                                            """.formatted(
-                                            Instant.now(),
-                                            e.getMessage(),
-                                            request.getRequestURI()
-                                    )
-                            );
-                        })
-                        .accessDeniedHandler((request, response, e) -> {
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType("application/json");
-
-                            response.getWriter().write("""
-                                            {
-                                              "timestamp": "%s",
-                                              "status": 403,
-                                              "error": "Forbidden",
-                                              "message": "%s",
-                                              "path": "%s"
-                                            }
-                                            """.formatted(
-                                            Instant.now(),
-                                            e.getMessage(),
-                                            request.getRequestURI()
-                                    )
-                            );
-                        })
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(matcherRegistry -> matcherRegistry
                         .requestMatchers("/error").permitAll()
@@ -88,7 +55,7 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
-                        new JwtAuthFilter(jwtUtils, userDetailsService),
+                        new JwtAuthFilter(jwtUtils, userDetailsService, jwtAuthenticationEntryPoint),
                         UsernamePasswordAuthenticationFilter.class
                 );
 
