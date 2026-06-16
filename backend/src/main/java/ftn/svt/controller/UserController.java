@@ -1,15 +1,15 @@
 package ftn.svt.controller;
 
+import ftn.svt.exception.ApiException;
 import ftn.svt.model.User;
 import ftn.svt.model.dto.user.UserInfoDTO;
 import ftn.svt.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -19,6 +19,19 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<?> getAllFiltered(
+            @RequestParam() String search,
+            Pageable pageable
+    ) {
+        if (search.isEmpty()) {
+            throw ApiException.badRequest("search must be at least 1 character long");
+        }
+        Page<User> users = userService.getAllFiltered(search, pageable);
+        Page<UserInfoDTO> dtos = users.map(UserInfoDTO::from);
+        return ResponseEntity.ok(dtos);
+    }
 
     @GetMapping("/me")
     public ResponseEntity<?> getMe(Authentication auth) {

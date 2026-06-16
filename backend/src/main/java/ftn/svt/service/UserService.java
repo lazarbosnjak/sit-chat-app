@@ -4,6 +4,8 @@ import ftn.svt.exception.ApiException;
 import ftn.svt.model.User;
 import ftn.svt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -23,5 +25,9 @@ public class UserService {
     public User findOneById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("User not found"));
+    }
+
+    public Page<User> getAllFiltered(String search, Pageable pageable) {
+        return userRepository.findAllFiltered(search, pageable);
     }
 }
