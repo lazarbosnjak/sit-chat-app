@@ -26,3 +26,16 @@ export interface Page<T> {
   totalElements: number;
   totalPages: number;
 }
+
+export interface User {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  email: string;
+  pfpUrl: string;
+  role: 'ADMIN' | 'USER';
+  createdAt: Date;
+  enabled: boolean;
+}

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { form, FormField, FormRoot } from '@angular/forms/signals';
 import { AuthService } from '@core/services/auth.service';
+import { ChatService } from '@core/services/chat.service';
 import { StompService } from '@core/services/stomp.service';
 import { environment as env } from '@environments/environment';
 import { ModalComponent } from '@shared/components/modal/modal.component';
@@ -27,6 +28,7 @@ interface User {
 export class HomeComponent {
   private http = inject(HttpClient);
   readonly authService = inject(AuthService);
+  private readonly chatService = inject(ChatService);
 
   username = signal('');
 
@@ -127,5 +129,16 @@ export class HomeComponent {
 
   closeNewChatModal() {
     this.isNewChatModalOpen.set(false);
+  }
+
+  async createNewDirectChat(userId: string) {
+    try {
+      const chat = await this.chatService.createDirectChat(userId);
+      // this.searchResults.update((old) => old.filter((user) => user.id !== userId));
+      this.closeNewChatModal();
+      alert(chat.members[0].username);
+    } catch (err) {
+      console.error(err);
+    }
   }
 }
