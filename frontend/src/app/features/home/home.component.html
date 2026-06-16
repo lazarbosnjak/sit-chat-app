@@ -1,4 +1,19 @@
 <div>
   <h1>Home</h1>
   <h2>Hello {{ username() }}</h2>
+  <form [formRoot]="chatForm">
+    <input
+      type="text"
+      [formField]="chatForm.content"
+      class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
+    />
+    <button
+      type="submit"
+      class="rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 hover:cursor-pointer disabled:bg-blue-300 disabled:hover:cursor-not-allowed"
+    >
+      Submit
+    </button>
+  </form>
+  <h2>Reply:</h2>
+  <p>{{ chatMessage() }}</p>
 </div>
