@@ -12,6 +12,7 @@ import javax.crypto.SecretKey;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
@@ -27,7 +28,7 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String getUsernameFromToken(String token) {
+    public String getSubjectFromToken(String token) {
         try {
             return getClaimsFromToken(token).getSubject();
         } catch (Exception e) {
@@ -57,17 +58,19 @@ public class JwtUtils {
         return expDate != null && expDate.toInstant().isBefore(now);
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-       String username = getUsernameFromToken(token);
-       return username != null
-               && username.equals(userDetails.getUsername())
-               && !isTokenExpired(token);
+    public boolean isTokenValid(String token, UUID userId) {
+        String idStr = getSubjectFromToken(token);
+        if (idStr == null) return false;
+        UUID id = UUID.fromString(idStr);
+        return id.equals(userId)
+                && !isTokenExpired(token);
     }
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(UserDetails userDetails, UUID userId) {
+
         Instant now = Instant.now(Clock.systemUTC());
         return Jwts.builder()
-                .subject(userDetails.getUsername())
+                .subject(userId.toString())
                 .claim("role", userDetails.getAuthorities().toArray()[0])
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(expiration)))

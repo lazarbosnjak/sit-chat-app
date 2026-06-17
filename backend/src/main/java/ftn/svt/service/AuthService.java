@@ -4,6 +4,7 @@ import ftn.svt.config.security.JwtUtils;
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.RegistrationRequestForm;
 import ftn.svt.model.RegistrationRequestFormStatus;
+import ftn.svt.model.User;
 import ftn.svt.model.dto.auth.LoginRequest;
 import ftn.svt.model.dto.auth.RegistrationRequest;
 import ftn.svt.repository.RegistrationRequestFormRepository;
@@ -41,6 +42,7 @@ public class AuthService {
         if (userRepository.findByUsername(dto.username()).isPresent()) {
             throw ApiException.conflict("Username already exists");
         }
+
         RegistrationRequestForm form = RegistrationRequestForm.builder()
                 .requestId(null)
                 .username(dto.username())
@@ -49,7 +51,10 @@ public class AuthService {
                 .lastName(dto.lastName())
                 .phoneNumber(dto.phoneNumber())
                 .email(dto.email())
-                .pfpUrl(dto.pfpUrl())
+                .pfpUrl(dto.pfpUrl().isBlank()
+                        ? "https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg"
+                        : dto.pfpUrl()
+                )
                 .status(RegistrationRequestFormStatus.IN_PROCESS)
                 .build();
 
@@ -73,7 +78,9 @@ public class AuthService {
 
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(dto.username());
-            return jwtUtils.generateToken(userDetails);
+            User user = userRepository.findByUsername(dto.username())
+                    .orElseThrow(() -> ApiException.unauthorized("Username not found"));
+            return jwtUtils.generateToken(userDetails, user.getId());
         } catch (UsernameNotFoundException ex) {
             throw ApiException.unauthorized(ex.getMessage());
         }

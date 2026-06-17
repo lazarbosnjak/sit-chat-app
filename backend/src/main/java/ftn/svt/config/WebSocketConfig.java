@@ -1,6 +1,7 @@
 package ftn.svt.config;
 
 import ftn.svt.config.security.JwtUtils;
+import ftn.svt.service.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.context.annotation.Configuration;
@@ -14,10 +15,11 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+import java.util.UUID;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -25,7 +27,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtUtils jwtUtils;
-    private final UserDetailsService userDetailsService;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
@@ -57,10 +59,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                     if (authHeader != null && authHeader.startsWith("Bearer ")) {
                         String token = authHeader.substring(7);
-                        String username = jwtUtils.getUsernameFromToken(token);
+                        UUID userId = UUID.fromString(jwtUtils.getSubjectFromToken(token));
 
-                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                        if (jwtUtils.isTokenValid(token, userDetails)) {
+                        UserDetails userDetails = userDetailsService.loadUserById(userId);
+                        if (jwtUtils.isTokenValid(token, userId)) {
                             UsernamePasswordAuthenticationToken authentication =
                                     new UsernamePasswordAuthenticationToken(
                                             userDetails,
