@@ -3,6 +3,7 @@ package ftn.svt.controller;
 import ftn.svt.model.Chat;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
+import ftn.svt.model.dto.chat.ChatWithMessagesResponse;
 import ftn.svt.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.Collection;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v0/chats")
@@ -32,12 +34,22 @@ public class ChatController {
                 .body(res);
     }
 
-    // TODO: Add interceptor that only allows people in the chat to request this
     @GetMapping("/me")
     public ResponseEntity<?> getMine(Principal principal) {
         Collection<Chat> chats = chatService.getAllByPrincipal(principal);
         var res = chats.stream().map(ChatInfoResponse::from).toList();
         return ResponseEntity.ok(res);
+    }
+
+    // TODO: Add interceptor that only allows people in the chat to request this
+    @GetMapping({"/{id}"})
+    public ResponseEntity<?> getById(
+            @PathVariable UUID id
+    ) {
+      Chat chat = chatService.getById(id);
+      var res = ChatWithMessagesResponse.from(chat);
+
+      return ResponseEntity.ok(res);
     }
 
 }

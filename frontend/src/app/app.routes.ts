@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './features/home/home.component';
 import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from '@core/guards/admin.guard';
+import { ChatComponent } from '@features/chat/chat.component';
 
 export const routes: Routes = [
   {
@@ -18,5 +19,9 @@ export const routes: Routes = [
     path: 'admin',
     loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
     canActivateChild: [adminGuard],
+  },
+  {
+    path: 'chats/:id',
+    component: ChatComponent,
   },
 ];

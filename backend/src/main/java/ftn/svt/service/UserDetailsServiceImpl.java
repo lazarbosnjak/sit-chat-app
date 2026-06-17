@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Primary
@@ -45,5 +46,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
        authorities.add(new SimpleGrantedAuthority(role));
 
        return authorities;
+   }
+
+   public UserDetails loadUserById(UUID id) throws UsernameNotFoundException {
+       User user = userRepository.findById(id)
+               .orElseThrow(() -> new UsernameNotFoundException("User with ID: " + id + "not found."));
+       return new org.springframework.security.core.userdetails.User(
+               user.getUsername(), user.getPassword(), user.isEnabled(),
+               true, true, true, getGrantedAuthorities(user)
+       );
    }
 }

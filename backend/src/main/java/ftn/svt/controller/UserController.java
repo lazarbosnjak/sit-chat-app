@@ -6,7 +6,6 @@ import ftn.svt.model.dto.user.UserInfoDTO;
 import ftn.svt.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -36,8 +35,8 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getMe(Authentication auth) {
-        User user = userService.findByUsername(auth.getName());
+    public ResponseEntity<?> getMe(Principal principal) {
+        User user = userService.findByUsername(principal.getName());
         UserInfoDTO dto = new UserInfoDTO(
                 user.getId(),
                 user.getUsername(),

@@ -81,4 +81,9 @@ public class ChatService {
         User user = userService.findByUsername(principal.getName());
         return chatRepository.findAllWithUserId(user.getId());
     }
+
+    public Chat getById(UUID id) {
+        return chatRepository.findById(id)
+                .orElseThrow(() -> ApiException.notFound("Chat with this id does not exist"));
+    }
 }

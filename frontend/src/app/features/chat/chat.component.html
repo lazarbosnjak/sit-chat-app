@@ -1,0 +1,40 @@
+<div class="flex h-screen bg-gray-100 text-gray-900">
+  <app-sidebar class="h-full shrink-0" />
+  <!-- Main chat area -->
+  <main class="flex min-w-0 flex-1 flex-col">
+    <!-- Chat header -->
+    <header class="flex items-center gap-3 border-b border-gray-200 bg-white p-4">
+      <img [src]="chatImage()" alt="Profile picture" class="h-10 w-10 rounded-full object-cover" />
+
+      <div>
+        <h2 class="font-semibold">{{ chatTitle() }}</h2>
+        <p class="text-sm text-gray-500">Online</p>
+      </div>
+    </header>
+
+    <!-- Messages area -->
+    <section class="flex-1 overflow-y-auto p-6">
+      <div class="flex h-full items-center justify-center text-gray-400">
+        Chat messages will go here
+      </div>
+    </section>
+
+    <!-- Message input -->
+    <footer class="border-t border-gray-200 bg-white p-4">
+      <div class="flex gap-3">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          class="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-blue-500"
+        />
+
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white transition hover:bg-blue-700"
+        >
+          Send
+        </button>
+      </div>
+    </footer>
+  </main>
+</div>

@@ -32,6 +32,9 @@ public class Chat {
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMember> members = new ArrayList<>();
 
+    @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Message> messages = new ArrayList<>();
+
     @CreatedDate
     private Instant createdAt;
 

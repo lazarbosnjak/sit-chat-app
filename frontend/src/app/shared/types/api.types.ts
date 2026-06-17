@@ -50,8 +50,10 @@ export interface Chat {
 }
 
 export interface ChatMember {
+  memberId: string;
   userId: string;
   username: string;
   fullName: string;
+  pfpUrl: string;
   role: 'ADMIN' | 'MEMBER';
 }
