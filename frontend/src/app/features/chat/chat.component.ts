@@ -21,6 +21,7 @@ export class ChatComponent {
   chat = signal<Chat | null>(null);
   chatTitle = signal<string>('');
   chatImage = signal<string>('');
+  selectedChatId = signal<string | null>(null);
 
   ngOnInit() {
     this.route.paramMap
@@ -38,6 +39,7 @@ export class ChatComponent {
       .subscribe({
         next: (chat) => {
           this.chat.set(chat);
+          this.selectedChatId.set(chat.id);
           this.setupInfo(chat);
           console.log(chat);
         },

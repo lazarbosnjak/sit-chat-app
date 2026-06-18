@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, input, signal } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
@@ -20,6 +20,8 @@ export class SidebarComponent {
   readonly userService = inject(UserService);
   readonly chatService = inject(ChatService);
   readonly authService = inject(AuthService);
+
+  selectedChatId = input<string | null>(null);
 
   currentUser = signal<User | null>(null);
 
@@ -108,5 +110,9 @@ export class SidebarComponent {
 
   navigateToChat(chatId: string) {
     this.router.navigate(['/chats', chatId]);
+  }
+
+  isSelectedChat(chat: Chat): boolean {
+    return chat.id === this.selectedChatId();
   }
 }

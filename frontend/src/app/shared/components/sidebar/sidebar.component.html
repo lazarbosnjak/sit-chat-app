@@ -28,7 +28,11 @@
     @for (chat of chats(); track chat.id) {
       <button
         type="button"
-        class="flex w-full gap-3 border-b border-gray-100 p-4 text-left transition hover:bg-gray-50"
+        class="flex w-full gap-3 border-b border-gray-100 p-4 text-left transition"
+        [class.bg-blue-100]="isSelectedChat(chat)"
+        [class.font-bold]="isSelectedChat(chat)"
+        [class.hover:bg-gray-200]="!isSelectedChat(chat)"
+        [class.hover:bg-blue-50]="isSelectedChat(chat)"
         (click)="navigateToChat(chat.id)"
       >
         <img
@@ -36,7 +40,7 @@
           alt="Profile picture"
           class="h-12 w-12 rounded-full object-cover"
         />
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 flex-1 flex flex-col justify-center">
           <div class="flex items-center justify-between gap-2">
             @if (chat.type === 'DIRECT') {
               <h2 class="truncate font-medium">
@@ -47,28 +51,9 @@
             }
             <span class="shrink-0 text-xs text-gray-400">12:45</span>
           </div>
-          <p class="truncate text-sm text-gray-500">Hey, are we still meeting later today?</p>
         </div>
       </button>
     }
-
-    <button
-      type="button"
-      class="flex w-full gap-3 border-b border-gray-100 bg-blue-50 p-4 text-left transition hover:bg-blue-50"
-    >
-      <img
-        src="https://i.pravatar.cc/80?img=3"
-        alt="Profile picture"
-        class="h-12 w-12 rounded-full object-cover"
-      />
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center justify-between gap-2">
-          <h2 class="truncate font-medium text-blue-700">Mark Johnson</h2>
-          <span class="shrink-0 text-xs text-blue-500">09:30</span>
-        </div>
-        <p class="truncate text-sm text-blue-600">Okay, sounds good to me.</p>
-      </div>
-    </button>
   </div>
 
   <!-- Sidebar footer -->
