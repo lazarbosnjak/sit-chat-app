@@ -1,5 +1,6 @@
 package ftn.svt.controller;
 
+import ftn.svt.config.security.ChatSecurity;
 import ftn.svt.model.Chat;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
@@ -9,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class ChatController {
 
     private final ChatService chatService;
+    private final ChatSecurity chatSecurity;
 
     @PostMapping
     public ResponseEntity<?> create(
@@ -41,7 +44,7 @@ public class ChatController {
         return ResponseEntity.ok(res);
     }
 
-    // TODO: Add interceptor that only allows people in the chat to request this
+    @PreAuthorize("@chatSecurity.canAccessChat(authentication, #id)")
     @GetMapping({"/{id}"})
     public ResponseEntity<?> getById(
             @PathVariable UUID id

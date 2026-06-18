@@ -38,4 +38,6 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
             where m.user.id = :id
             """)
     Collection<Chat> findAllWithUserId(UUID id);
+
+    boolean existsByIdAndMembersUserUsername(UUID chatId, String username);
 }
