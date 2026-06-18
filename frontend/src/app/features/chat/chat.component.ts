@@ -1,23 +1,69 @@
 import { formatDate } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+  ViewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/services/auth.service';
 import { ChatService } from '@core/services/chat.service';
+import { StompService } from '@core/services/stomp.service';
 import { UserService } from '@core/services/user.service';
 import { SidebarComponent } from '@shared/components/sidebar/sidebar.component';
-import { Chat, Message, MessageReceipt } from '@shared/types/api.types';
-import { forkJoin, switchMap } from 'rxjs';
+import { Chat, ChatEvent, Message, MessageReceipt, User } from '@shared/types/api.types';
+import { StompSubscription } from '@stomp/stompjs';
+import { forkJoin, switchMap, tap } from 'rxjs';
 
 @Component({
   templateUrl: './chat.component.html',
-  imports: [SidebarComponent],
+  imports: [SidebarComponent, FormRoot, FormField],
 })
 export class ChatComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly chatService = inject(ChatService);
   private readonly userService = inject(UserService);
+  private readonly authService = inject(AuthService);
+  private readonly stompService = inject(StompService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  currentUser = this.userService.getLoggedInUser();
+  @ViewChild('messagesContainer')
+  private messagesContainer?: ElementRef<HTMLElement>;
+  private injector = inject(Injector);
+
+  constructor() {
+    effect(() => {
+      this.messages();
+
+      afterNextRender(
+        () => {
+          this.scrollToBottom();
+        },
+        {
+          injector: this.injector,
+        },
+      );
+    });
+  }
+
+  private scrollToBottom() {
+    const el = this.messagesContainer?.nativeElement;
+
+    if (!el) {
+      return;
+    }
+
+    el.scrollTop = el.scrollHeight;
+  }
+  currentUser = signal<User | null>(this.userService.getLoggedInUser());
 
   chat = signal<Chat | null>(null);
   chatTitle = signal<string>('');
@@ -26,7 +72,21 @@ export class ChatComponent {
   messages = signal<Message[]>([]);
   messageReceipts = signal<MessageReceipt[]>([]);
 
+  messageModel = signal({
+    content: '',
+  });
+
+  messageForm = form(this.messageModel, (path) => {
+    required(path.content, {
+      message: 'Message cannot be empty',
+    });
+  });
+
+  private chatEventSubscription: StompSubscription | null = null;
+
   ngOnInit() {
+    this.setupLiveChat();
+
     this.route.paramMap
       .pipe(
         switchMap((params) => {
@@ -42,25 +102,36 @@ export class ChatComponent {
             messageReceipts: this.chatService.getMessageReceiptsByChatId(chatId),
           });
         }),
-      )
-      .subscribe({
-        next: ({ chat, messages, messageReceipts }) => {
+        tap(({ chat, messages, messageReceipts }) => {
           this.chat.set(chat);
           this.selectedChatId.set(chat.id);
           this.messages.set(messages);
           this.messageReceipts.set(messageReceipts);
 
           this.setupInfo(chat);
-
-          console.log(chat);
-        },
+        }),
+        switchMap(({ chat }) =>
+          this.chatService.markAsRead(chat.id).pipe(
+            tap(() => {
+              this.chatService.markChatAsReadLocally(chat.id);
+            }),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
         error: (err) => {
           console.error(err);
+
           if (err.status === 404) {
             this.router.navigate(['/']);
           }
         },
       });
+
+    this.destroyRef.onDestroy(() => {
+      this.chatEventSubscription?.unsubscribe();
+    });
   }
 
   private setupInfo(chat: Chat) {
@@ -69,14 +140,14 @@ export class ChatComponent {
     }
 
     if (chat.type === 'DIRECT') {
-      const recipient = chat.members.filter((m) => m.userId !== this.currentUser.id)[0];
+      const recipient = chat.members.filter((m) => m.userId !== this.currentUser()?.id)[0];
       this.chatTitle.set(recipient.fullName);
       this.chatImage.set(recipient.pfpUrl);
     }
   }
 
   isOwnMessage(message: Message): boolean {
-    return message.sender.userId === this.currentUser.id;
+    return message.sender.userId === this.currentUser()?.id;
   }
 
   formatMessageTime(value: Date | string): string {
@@ -107,5 +178,88 @@ export class ChatComponent {
       a.getMonth() === b.getMonth() &&
       a.getDate() === b.getDate()
     );
+  }
+
+  private setupLiveChat(): void {
+    console.log('setupLiveChat called');
+
+    this.stompService.connect(this.authService.getToken(), () => {
+      console.log('STOMP connected callback fired');
+
+      if (this.chatEventSubscription) {
+        console.log('Already subscribed to chat events');
+        return;
+      }
+
+      this.chatEventSubscription = this.stompService.subscribeJson<ChatEvent>(
+        '/user/queue/chat-events',
+        (event) => {
+          console.log('CHAT EVENT RECEIVED:', event);
+          this.handleChatEvent(event);
+        },
+      );
+
+      console.log('Subscription result:', this.chatEventSubscription);
+    });
+  }
+
+  private handleChatEvent(event: ChatEvent): void {
+    if (event.type === 'MESSAGE_CREATED') {
+      this.handleMessageCreated(event);
+    }
+  }
+
+  private handleMessageCreated(event: ChatEvent): void {
+    const selectedChatId = this.selectedChatId();
+
+    if (event.chatId !== selectedChatId) {
+      this.chatService.updateChatUnreadCount(event.chatId, event.unreadCount);
+      return;
+    }
+
+    const messageAlreadyExist = this.messages().some((message) => message.id === event.message.id);
+
+    if (messageAlreadyExist) {
+      return;
+    }
+
+    this.messages.update((old) => [...old, event.message]);
+
+    if (!this.isOwnMessage(event.message)) {
+      this.markCurrentChatAsRead();
+    }
+  }
+
+  sendMessage(): void {
+    const chatId = this.selectedChatId();
+    const content = this.messageModel().content.trim();
+
+    if (!chatId || !content) {
+      return;
+    }
+
+    this.stompService.publishJson('/app/chat.send', {
+      chatId: chatId,
+      content: content,
+    });
+
+    this.messageModel.set({
+      content: '',
+    });
+  }
+
+  private markCurrentChatAsRead(): void {
+    const chatId = this.selectedChatId();
+
+    if (!chatId) {
+      return;
+    }
+
+    this.chatService
+      .markAsRead(chatId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (err) => console.error('Could not mark chat as read', err),
+      });
   }
 }

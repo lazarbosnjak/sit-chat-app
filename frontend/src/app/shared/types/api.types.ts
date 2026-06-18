@@ -80,3 +80,12 @@ export interface MessageReceipt {
   deliveredAt: Date;
   readAt: Date;
 }
+
+export type ChatEventType = 'MESSAGE_CREATED';
+
+export interface ChatEvent {
+  type: ChatEventType;
+  chatId: string;
+  message: Message;
+  unreadCount: number;
+}

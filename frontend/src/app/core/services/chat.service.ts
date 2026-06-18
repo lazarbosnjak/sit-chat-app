@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { UserService } from '@core/services/user.service';
 import { environment as env } from '@environments/environment';
 import { Chat, Message, MessageReceipt } from '@shared/types/api.types';
@@ -12,6 +12,8 @@ export class ChatService {
   private readonly http = inject(HttpClient);
   private readonly userService = inject(UserService);
 
+  chats = signal<Chat[]>([]);
+
   async createDirectChat(recipientId: string): Promise<Chat> {
     return firstValueFrom(
       this.http.post<Chat>(`${env.apiUrl}/chats`, {
@@ -23,8 +25,27 @@ export class ChatService {
     );
   }
 
-  async getMyChats(): Promise<Chat[]> {
-    return firstValueFrom(this.http.get<Chat[]>(`${env.apiUrl}/chats/me`));
+  getMyChats() {
+    return this.http.get<Chat[]>(`${env.apiUrl}/chats/me`);
+  }
+
+  loadMyChats(): void {
+    this.getMyChats().subscribe({
+      next: (chats) => this.chats.set(chats),
+      error: (err) => console.error('Could not load chats', err),
+    });
+  }
+
+  markChatAsReadLocally(chatId: string): void {
+    this.chats.update((chats) =>
+      chats.map((chat) => (chat.id === chatId ? { ...chat, unreadCount: 0 } : chat)),
+    );
+  }
+
+  updateChatUnreadCount(chatId: string, unreadCount: number): void {
+    this.chats.update((chats) =>
+      chats.map((chat) => (chat.id === chatId ? { ...chat, unreadCount } : chat)),
+    );
   }
 
   getById(chatId: string): Observable<Chat> {
@@ -69,5 +90,9 @@ export class ChatService {
       return chat.name ? chat.name : 'Group Chat';
     }
     return '';
+  }
+
+  markAsRead(chatId: string) {
+    return this.http.patch<void>(`${env.apiUrl}/chats/${chatId}/read`, {});
   }
 }

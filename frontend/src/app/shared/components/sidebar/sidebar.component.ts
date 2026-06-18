@@ -25,7 +25,7 @@ export class SidebarComponent {
 
   currentUser = signal<User | null>(null);
 
-  chats = signal<Chat[]>([]);
+  chats = this.chatService.chats;
 
   // SEARCH
   searchModel = signal({
@@ -97,15 +97,8 @@ export class SidebarComponent {
   }
 
   async ngOnInit() {
+    this.chatService.loadMyChats();
     this.currentUser.set(this.userService.getLoggedInUser());
-
-    try {
-      const chats = await this.chatService.getMyChats();
-      this.chats.set(chats);
-    } catch (err) {
-      console.error(err);
-      // TODO: Modal for error handling
-    }
   }
 
   navigateToChat(chatId: string) {

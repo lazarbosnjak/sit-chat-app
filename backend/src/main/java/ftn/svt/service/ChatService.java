@@ -4,10 +4,8 @@ import ftn.svt.exception.ApiException;
 import ftn.svt.model.*;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
-import ftn.svt.repository.ChatRepository;
-import ftn.svt.repository.MessageReceiptRepository;
-import ftn.svt.repository.MessageRepository;
-import ftn.svt.repository.UserRepository;
+import ftn.svt.model.dto.chat.MessageResponse;
+import ftn.svt.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +24,7 @@ public class ChatService {
     private final UserService userService;
     private final MessageRepository messageRepository;
     private final MessageReceiptRepository messageReceiptRepository;
+    private final ChatMemberRepository chatMemberRepository;
 
     @Transactional
     public Chat create(ChatCreateRequest dto, Principal principal) {
@@ -116,8 +115,8 @@ public class ChatService {
         return messageReceiptRepository.findByMessageChatId(chatId);
     }
 
-    public long getUnreadCount(UUID chatId, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
+    public long getUnreadCount(UUID chatId, String username) {
+        User user = userService.findByUsername(username);
 
         return messageReceiptRepository.countUnreadByChatIdAndUserId(
                 chatId,
@@ -136,5 +135,53 @@ public class ChatService {
                 ReceiptStatus.READ,
                 Instant.now()
         );
+    }
+
+    @Transactional
+    public MessageResponse sendMessage(String senderUsername, UUID chatId, String content) {
+        if (content == null || content.isBlank()) {
+            throw ApiException.badRequest("Message content cannot be empty");
+        }
+
+        ChatMember senderMember = chatMemberRepository
+                .findByChatIdAndUserUsername(chatId, senderUsername)
+                .orElseThrow(() -> ApiException.forbidden("You are not a member of this chat"));
+
+        Chat chat = senderMember.getChat();
+
+        Message message = Message.builder()
+                .chat(chat)
+                .sender(senderMember)
+                .content(content.trim())
+                .build();
+
+        Message savedMessage = messageRepository.save(message);
+
+        List<ChatMember> recipients = chatMemberRepository.findAllByChatId(chatId);
+
+        Instant now = Instant.now();
+
+        List<MessageReceipt> receipts = recipients.stream()
+                .map(recipient -> {
+                    boolean isSender = recipient.getId().equals(senderMember.getId());
+
+                    return MessageReceipt.builder()
+                            .message(savedMessage)
+                            .recipient(recipient)
+                            .status(isSender ? ReceiptStatus.READ : ReceiptStatus.DELIVERED)
+                            .deliveredAt(now)
+                            .readAt(isSender ? now : null)
+                            .build();
+                })
+                .toList();
+
+        messageReceiptRepository.saveAll(receipts);
+
+        return MessageResponse.from(savedMessage);
+    }
+
+    @Transactional(readOnly = true)
+    public Collection<String> getChatMemberUsernames(UUID chatId) {
+        return chatMemberRepository.findUsernamesByChatId(chatId);
     }
 }

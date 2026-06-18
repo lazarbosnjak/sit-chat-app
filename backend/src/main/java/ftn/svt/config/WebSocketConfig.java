@@ -75,7 +75,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     }
                 }
 
-//                return ChannelInterceptor.super.preSend(message, channel);
                 return message;
             }
         });

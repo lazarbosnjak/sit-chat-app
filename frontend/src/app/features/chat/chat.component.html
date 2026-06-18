@@ -13,7 +13,7 @@
     </header>
 
     <!-- Messages area -->
-    <section class="flex-1 overflow-y-auto p-6">
+    <section #messagesContainer class="flex-1 overflow-y-auto p-6">
       @if (messages().length === 0) {
         <div class="flex h-full items-center justify-center text-gray-400">
           Empty chat, send a message to start a conversation with this user!
@@ -71,20 +71,23 @@
 
     <!-- Message input -->
     <footer class="border-t border-gray-200 bg-white p-4">
-      <div class="flex gap-3">
+      <form [formRoot]="messageForm" (submit)="sendMessage()" class="flex gap-3">
         <input
+          [formField]="messageForm.content"
           type="text"
           placeholder="Type a message..."
+          autocomplete="off"
           class="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-blue-500"
         />
 
         <button
-          type="button"
-          class="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white transition hover:bg-blue-700"
+          type="submit"
+          class="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="!messageModel().content.trim()"
         >
           Send
         </button>
-      </div>
+      </form>
     </footer>
   </main>
 </div>

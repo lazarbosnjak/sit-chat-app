@@ -1,42 +1,55 @@
 package ftn.svt.controller;
 
+import ftn.svt.model.dto.chat.ChatEventResponse;
+import ftn.svt.model.dto.chat.ChatMessageRequest;
+import ftn.svt.model.dto.chat.MessageResponse;
+import ftn.svt.service.ChatService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.Collection;
 
 @Controller
+@RequiredArgsConstructor
 public class ChatWebSocketController {
 
-    @MessageMapping("/chat")
-    @SendTo("/topic/messages")
-    public String sendMessage(String message, Principal principal) {
-        String username = principal != null ? principal.getName() : "anon";
+    private final ChatService chatService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-        return username + ": " + message;
+    @MessageMapping("/chat.send")
+    public void sendMessage(ChatMessageRequest request, Principal principal) {
+        String senderUsername = principal.getName();
+
+        MessageResponse savedMessage =
+                chatService.sendMessage(senderUsername, request.chatId(), request.content());
+
+        Collection<String> memberUsernames =
+                chatService.getChatMemberUsernames(request.chatId());
+
+        for (String username : memberUsernames) {
+            long unreadCount = chatService.getUnreadCount(request.chatId(), username);
+
+            ChatEventResponse event = new ChatEventResponse(
+                    "MESSAGE_CREATED",
+                    request.chatId(),
+                    savedMessage,
+                    unreadCount
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/chat-events",
+                    event
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/messages",
+                    savedMessage
+            );
+        }
     }
-
-//    @MessageMapping("/chat.send")
-//    public void sendMessage(ChatMessageRequest request, Principal principal) {
-//        String senderUsername = principal.getName();
-//
-//        ChatMessageResponse message = chatService.saveAndBuildMessage(
-//                senderUsername,
-//                request.recipientUsername(),
-//                request.content()
-//        );
-//
-//        messagingTemplate.convertAndSendToUser(
-//                request.recipientUsername(),
-//                "/queue/messages",
-//                message
-//        );
-//
-//        messagingTemplate.convertAndSendToUser(
-//                senderUsername,
-//                "/queue/messages",
-//                message
-//        );
-//    }
 }

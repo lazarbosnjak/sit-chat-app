@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { TOKEN_KEY } from '@core/constants/auth.constants';
+import { StompService } from '@core/services/stomp.service';
 import { UserService } from '@core/services/user.service';
 import { jwtDecode } from 'jwt-decode';
 
@@ -18,6 +19,7 @@ interface JwtPayload {
 export class AuthService {
   private router = inject(Router);
   private readonly userService = inject(UserService);
+  private readonly stompService = inject(StompService);
 
   isAuthenticated(): boolean {
     const token = this.getToken();
@@ -56,7 +58,8 @@ export class AuthService {
     this.router.navigate(['/']);
   }
 
-  logout() {
+  async logout(): Promise<void> {
+    await this.stompService.disconnect();
     this.removeToken();
     this.userService.removeUserFromLocalStorage();
     this.router.navigate(['/auth/login']);

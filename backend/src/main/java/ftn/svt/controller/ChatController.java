@@ -55,7 +55,7 @@ public class ChatController {
     ) {
         Chat chat = chatService.getById(id);
 
-        var unreadCount = chatService.getUnreadCount(chat.getId(), principal);
+        var unreadCount = chatService.getUnreadCount(chat.getId(), principal.getName());
         var res = ChatInfoResponse.from(chat, unreadCount);
 
         return ResponseEntity.ok(res);
