@@ -42,18 +42,41 @@ export interface User {
 
 export interface Chat {
   id: string;
-  name: string;
-  imageUrl: string;
+  name?: string;
+  imageUrl?: string;
   type: 'DIRECT' | 'GROUP';
   createdAt: Date;
   members: ChatMember[];
+  unreadCount: number;
 }
 
 export interface ChatMember {
   memberId: string;
   userId: string;
   username: string;
+  firstName: string;
+  lastName: string;
   fullName: string;
   pfpUrl: string;
   role: 'ADMIN' | 'MEMBER';
+}
+
+export interface Message {
+  id: string;
+  chatId: string;
+  sender: ChatMember;
+  content: string;
+  replyToMessageId?: string;
+  forwardedFromMessageId?: string;
+  createdAt: Date;
+}
+
+export interface MessageReceipt {
+  messageId: string;
+  recipientMemberId: string;
+  recipientUsername: string;
+  recipientPfpUrl: string;
+  status: 'SENT' | 'DELIVERED' | 'READ';
+  deliveredAt: Date;
+  readAt: Date;
 }

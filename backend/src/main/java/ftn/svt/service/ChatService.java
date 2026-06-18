@@ -3,13 +3,17 @@ package ftn.svt.service;
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.*;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
+import ftn.svt.model.dto.chat.ChatInfoResponse;
 import ftn.svt.repository.ChatRepository;
+import ftn.svt.repository.MessageReceiptRepository;
+import ftn.svt.repository.MessageRepository;
 import ftn.svt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,6 +24,8 @@ public class ChatService {
     private final ChatRepository chatRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final MessageRepository messageRepository;
+    private final MessageReceiptRepository messageReceiptRepository;
 
     @Transactional
     public Chat create(ChatCreateRequest dto, Principal principal) {
@@ -77,13 +83,58 @@ public class ChatService {
 
     }
 
-    public Collection<Chat> getAllByPrincipal(Principal principal) {
+    public Collection<ChatInfoResponse> getAllByPrincipal(Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        return chatRepository.findAllWithUserId(user.getId());
+        Collection<Chat> chats = chatRepository.findAllWithUserId(user.getId());
+
+        Map<UUID, Long> unreadCounts = messageReceiptRepository
+                .countUnreadByChatForUser(user.getId())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        return chats.stream()
+                .map(chat -> ChatInfoResponse.from(
+                        chat,
+                        unreadCounts.getOrDefault(chat.getId(), 0L)
+                ))
+                .toList();
     }
 
     public Chat getById(UUID id) {
         return chatRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Chat with this id does not exist"));
+    }
+
+    public List<Message> getMessagesByChatId(UUID chatId) {
+        return messageRepository.findAllByChatId(chatId);
+    }
+
+    public List<MessageReceipt> getMessageReceiptsByChatId(UUID chatId) {
+        return messageReceiptRepository.findByMessageChatId(chatId);
+    }
+
+    public long getUnreadCount(UUID chatId, Principal principal) {
+        User user = userService.findByUsername(principal.getName());
+
+        return messageReceiptRepository.countUnreadByChatIdAndUserId(
+                chatId,
+                user.getId()
+        );
+    }
+
+    @Transactional
+    public void markChatAsRead(UUID chatId, Principal principal) {
+        User user = userRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
+
+        messageReceiptRepository.markChatAsRead(
+                chatId,
+                user.getId(),
+                ReceiptStatus.READ,
+                Instant.now()
+        );
     }
 }

@@ -14,9 +14,10 @@ public record ChatInfoResponse(
         String imageUrl,
         ChatType type,
         Instant createdAt,
-        Set<ChatMemberInfoResponse> members
+        Set<ChatMemberInfoResponse> members,
+        long unreadCount
 ) {
-    public static ChatInfoResponse from(Chat chat) {
+    public static ChatInfoResponse from(Chat chat, long unreadCount) {
         return new ChatInfoResponse(
                 chat.getId(),
                 chat.getName(),
@@ -24,14 +25,9 @@ public record ChatInfoResponse(
                 chat.getType(),
                 chat.getCreatedAt(),
                 chat.getMembers().stream()
-                        .map(member -> new ChatMemberInfoResponse(
-                                member.getId(),
-                                member.getUser().getId(),
-                                member.getUser().getUsername(),
-                                member.getUser().getFullName(),
-                                member.getUser().getPfpUrl(),
-                                member.getRole()
-                        )).collect(Collectors.toSet())
+                        .map(ChatMemberInfoResponse::from)
+                        .collect(Collectors.toSet()),
+                unreadCount
         );
     }
 }
