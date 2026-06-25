@@ -26,4 +26,14 @@ export class UserService {
   removeUserFromLocalStorage(): void {
     localStorage.removeItem(this.LOCAL_STORAGE_USER_KEY);
   }
+
+  async updateUser(user: User): Promise<User> {
+    const savedUser = await firstValueFrom(
+      this.http.put<User>(`${env.apiUrl}/users/${user.id}`, user),
+    );
+
+    await this.setUserToLocalStorage(savedUser);
+
+    return savedUser;
+  }
 }

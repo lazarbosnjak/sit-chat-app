@@ -1,0 +1,153 @@
+<div class="flex min-h-screen bg-gray-100 text-gray-900">
+  <main class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold">Profile</h1>
+        <p class="text-sm text-gray-500">Manage your account information</p>
+      </div>
+
+      @if (!updateProfileEnabled()) {
+        <button
+          type="button"
+          (click)="updateProfileEnabled.set(true)"
+          class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        >
+          Edit profile
+        </button>
+      }
+    </header>
+
+    <section class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div class="flex items-center gap-5 border-b border-gray-200 p-6">
+        <img
+          [src]="updateProfileModel().pfpUrl"
+          alt="Profile picture"
+          class="h-20 w-20 rounded-full object-cover"
+        />
+
+        <div class="min-w-0">
+          <h2 class="truncate text-xl font-semibold">
+            {{ user()?.firstName }} {{ user()?.lastName }}
+          </h2>
+          <p class="truncate text-sm text-gray-500">@{{ user()?.username }}</p>
+
+          <div class="mt-2 flex items-center gap-2">
+            <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+              {{ user()?.role }}
+            </span>
+            <span class="text-xs text-gray-400">
+              Joined {{ user()?.createdAt | date: 'dd.MM.yyyy.' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <form [formRoot]="updateProfileForm" class="grid gap-5 p-6">
+        <div class="grid gap-5 md:grid-cols-2">
+          <div class="flex flex-col gap-1">
+            <label for="firstName" class="text-sm font-medium text-gray-700">First name</label>
+            <input
+              id="firstName"
+              type="text"
+              [formField]="updateProfileForm.firstName"
+              [class.border-red-500]="showError(updateProfileForm.firstName())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateProfileForm.firstName())) {
+              <p class="text-xs text-red-600">{{ firstError(updateProfileForm.firstName()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="lastName" class="text-sm font-medium text-gray-700">Last name</label>
+            <input
+              id="lastName"
+              type="text"
+              [formField]="updateProfileForm.lastName"
+              [class.border-red-500]="showError(updateProfileForm.lastName())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateProfileForm.lastName())) {
+              <p class="text-xs text-red-600">{{ firstError(updateProfileForm.lastName()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="email" class="text-sm font-medium text-gray-700">E-mail</label>
+            <input
+              id="email"
+              type="email"
+              [formField]="updateProfileForm.email"
+              [class.border-red-500]="showError(updateProfileForm.email())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateProfileForm.email())) {
+              <p class="text-xs text-red-600">{{ firstError(updateProfileForm.email()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="phoneNumber" class="text-sm font-medium text-gray-700">Phone number</label>
+            <input
+              id="phoneNumber"
+              type="text"
+              [formField]="updateProfileForm.phoneNumber"
+              [class.border-red-500]="showError(updateProfileForm.phoneNumber())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateProfileForm.phoneNumber())) {
+              <p class="text-xs text-red-600">{{ firstError(updateProfileForm.phoneNumber()) }}</p>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="pfpUrl" class="text-sm font-medium text-gray-700">Profile picture URL</label>
+          <input
+            id="pfpUrl"
+            type="text"
+            [formField]="updateProfileForm.pfpUrl"
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </div>
+
+        <div class="grid gap-4 border-t border-gray-100 pt-5 text-sm md:grid-cols-2">
+          <div>
+            <p class="text-gray-500">User ID</p>
+            <p class="truncate font-medium text-gray-800">{{ user()?.id }}</p>
+          </div>
+
+          <div>
+            <p class="text-gray-500">Account status</p>
+            <p class="font-medium text-gray-800">
+              {{ user()?.enabled ? 'Enabled' : 'Disabled' }}
+            </p>
+          </div>
+        </div>
+
+        @if (updateProfileEnabled()) {
+          <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
+            <button
+              type="button"
+              (click)="cancelUpdate()"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            >
+              Save changes
+            </button>
+          </div>
+        }
+      </form>
+    </section>
+  </main>
+</div>
