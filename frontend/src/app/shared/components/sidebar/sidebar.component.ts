@@ -108,4 +108,8 @@ export class SidebarComponent {
   isSelectedChat(chat: Chat): boolean {
     return chat.id === this.selectedChatId();
   }
+
+  navigateToProfile() {
+    this.router.navigate(['/profile']);
+  }
 }

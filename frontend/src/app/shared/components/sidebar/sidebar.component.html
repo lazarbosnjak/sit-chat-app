@@ -71,14 +71,24 @@
   </div>
 
   <!-- Sidebar footer -->
-  <footer class="shrink-0 border-t border-gray-200 p-4">
+  <footer class="shrink-0 border-t border-gray-200 p-3">
     <div class="flex items-center justify-between gap-3">
-      <div class="min-w-0">
-        <p class="text-xs text-gray-500">Logged in as</p>
-        <p class="truncate text-sm font-medium text-gray-900">
-          {{ currentUser()?.firstName + ' ' + currentUser()?.lastName }}
-        </p>
-      </div>
+      <button
+        class="flex items-center gap-2 hover:bg-gray-100 pr-3 pl-2 py-2 rounded-lg"
+        (click)="navigateToProfile()"
+      >
+        <img
+          [src]="currentUser()?.pfpUrl"
+          alt="Profile picture"
+          class="h-9 w-9 shrink-0 rounded-full object-cover"
+        />
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-gray-900 text-left">
+            {{ currentUser()?.firstName + ' ' + currentUser()?.lastName }}
+          </p>
+          <p class="text-xs text-gray-500 text-left">Status: N/A</p>
+        </div>
+      </button>
 
       <button
         type="button"
