@@ -3,6 +3,7 @@ import { Component, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment as env } from '@environments/environment';
 
 @Component({
   templateUrl: './login.component.html',
@@ -19,7 +20,7 @@ export class LoginComponent {
 
   async handleSubmit() {
     this.http
-      .post('http://localhost:8080/api/v0/auth/login', this.loginForm.value, {
+      .post(`${env.apiUrl}/auth/login`, this.loginForm.value, {
         responseType: 'text',
       })
       .subscribe({
