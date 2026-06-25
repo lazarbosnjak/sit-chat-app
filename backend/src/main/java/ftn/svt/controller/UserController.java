@@ -2,10 +2,13 @@ package ftn.svt.controller;
 
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.User;
+import ftn.svt.model.dto.user.UpdateUserProfileRequest;
 import ftn.svt.model.dto.user.UserInfoDTO;
 import ftn.svt.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -68,5 +71,18 @@ public class UserController {
                 user.isEnabled()
         );
         return ResponseEntity.ok(dto);
+    }
+
+    @PreAuthorize("@userSecurity.isSelfOrAdmin(authentication, #id)")
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateById(
+            @PathVariable UUID id,
+            @RequestBody @Valid UpdateUserProfileRequest dto
+    ) {
+
+        User updatedUser = userService.updateProfile(id, dto);
+
+        return ResponseEntity
+                .ok(UserInfoDTO.from(updatedUser));
     }
 }
