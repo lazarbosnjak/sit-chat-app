@@ -11,13 +11,14 @@ import {
   maxLength,
   required,
 } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import { environment as env } from '@environments/environment';
 import {
   DataTableComponent,
   TableColumn,
 } from '@shared/components/data-table/data-table.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
-import { Page, User } from '@shared/types/api.types';
+import { User } from '@shared/types/api.types';
 import { firstValueFrom } from 'rxjs';
 
 interface UpdateUserModel {
@@ -26,11 +27,13 @@ interface UpdateUserModel {
   email: string;
   phoneNumber: string;
   pfpUrl: string;
+  enabled: boolean;
+  role: 'ADMIN' | 'USER';
 }
 
 @Component({
   templateUrl: './admin.users.component.html',
-  imports: [DataTableComponent, ModalComponent, FormField, FormRoot, DatePipe],
+  imports: [DataTableComponent, ModalComponent, FormField, FormRoot, DatePipe, RouterLink],
 })
 export class AdminUsersComponent {
   private readonly http = inject(HttpClient);
@@ -55,6 +58,8 @@ export class AdminUsersComponent {
     email: '',
     phoneNumber: '',
     pfpUrl: '',
+    enabled: false,
+    role: 'USER',
   });
 
   updateUserForm = form(
@@ -89,7 +94,7 @@ export class AdminUsersComponent {
 
           try {
             const updatedUser = await firstValueFrom(
-              this.http.put<User>(`${env.apiUrl}/users/${currentUser.id}`, userToUpdate),
+              this.http.put<User>(`${env.apiUrl}/admin/users/${currentUser.id}`, userToUpdate),
             );
 
             this.selectedUser.set(updatedUser);
@@ -110,9 +115,9 @@ export class AdminUsersComponent {
   );
 
   ngOnInit() {
-    this.http.get<Page<User>>(`${env.apiUrl}/admin/users`).subscribe({
+    this.http.get<User[]>(`${env.apiUrl}/admin/users`).subscribe({
       next: (res) => {
-        this.users.set(res.content);
+        this.users.set(res);
       },
       error: (err) => {
         console.error(err);
@@ -138,6 +143,8 @@ export class AdminUsersComponent {
       email: user.email,
       phoneNumber: user.phoneNumber,
       pfpUrl: user.pfpUrl,
+      enabled: user.enabled,
+      role: user.role,
     });
   }
 

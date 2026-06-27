@@ -3,6 +3,7 @@ package ftn.svt.service;
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.User;
 import ftn.svt.model.dto.user.UpdateUserProfileRequest;
+import ftn.svt.model.dto.user.UpdateUserRequest;
 import ftn.svt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -34,6 +35,47 @@ public class UserService {
         return userRepository.findAllFiltered(search, principalUserId);
     }
 
+    @Transactional
+    public User update(UUID id, UpdateUserRequest dto) {
+        User user = findOneById(id);
+
+        byte changes = 0;
+
+        if (!user.getFirstName().equals(dto.firstName())) {
+            user.setFirstName(dto.firstName());
+            changes++;
+        }
+        if (!user.getLastName().equals(dto.lastName())) {
+            user.setLastName(dto.lastName());
+            changes++;
+        }
+        if (!user.getPhoneNumber().equals(dto.phoneNumber())) {
+            user.setPhoneNumber(dto.phoneNumber());
+            changes++;
+        }
+        if (!user.getEmail().equals(dto.email())) {
+            user.setEmail(dto.email());
+            changes++;
+        }
+        if (!user.getPfpUrl().equals(dto.pfpUrl())) {
+            user.setPfpUrl(dto.pfpUrl());
+            changes++;
+        }
+        if (user.isEnabled() != dto.enabled()) {
+            user.setEnabled(dto.enabled());
+            changes++;
+        }
+        if (user.getRole() != dto.role()) {
+            user.setRole(dto.role());
+            changes++;
+        }
+
+        if (changes == 0) {
+            return user;
+        }
+
+        return userRepository.save(user);
+    }
     @Transactional
     public User updateProfile(UUID id, UpdateUserProfileRequest dto) {
         User user = findOneById(id);
