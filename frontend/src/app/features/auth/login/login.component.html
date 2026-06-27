@@ -48,3 +48,9 @@
     </div>
   </div>
 </div>
+
+@if (loginError(); as error) {
+  <app-modal title="Login failed" variant="error" (close)="closeErrorModal()">
+    <p class="text-sm text-gray-700">{{ error }}</p>
+  </app-modal>
+}
