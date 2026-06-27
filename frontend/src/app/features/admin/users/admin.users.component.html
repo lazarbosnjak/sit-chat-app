@@ -1,55 +1,186 @@
-<div>
-  <h1>Users</h1>
+<div class="min-h-screen bg-gray-100 text-gray-900">
+  <main class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
+    <header>
+      <div>
+        <h1 class="text-2xl font-semibold">Users</h1>
+        <p class="text-sm text-gray-500">Manage user account information</p>
+      </div>
+    </header>
 
-  <data-table
-    [columns]="columns"
-    [rows]="users()"
-    [emptyMessage]="'No users found'"
-    [actionTemplate]="userActions"
-  />
+    <data-table
+      [columns]="columns"
+      [rows]="users()"
+      emptyMessage="No users found."
+      [actionTemplate]="userActions"
+    />
 
-  <ng-template #userActions let-user>
-    <button
-      type="button"
-      class="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
-      (click)="openUserModal(user)"
-    >
-      Edit
-    </button>
-  </ng-template>
-
-  @if (selectedUser(); as user) {
-    <app-modal title="Edit user" (close)="closeUserModal()">
-      <form class="space-y-3" (ngSubmit)="saveUser()">
-        <input
-          class="w-full rounded border px-3 py-2"
-          name="username"
-          [(ngModel)]="user.username"
-        />
-        <input
-          class="w-full rounded border px-3 py-2"
-          name="firstName"
-          [(ngModel)]="user.firstName"
-        />
-        <input
-          class="w-full rounded border px-3 py-2"
-          name="lastName"
-          [(ngModel)]="user.lastName"
-        />
-        <input class="w-full rounded border px-3 py-2" name="email" [(ngModel)]="user.email" />
-        <input
-          class="w-full rounded border px-3 py-2"
-          name="phoneNumber"
-          [(ngModel)]="user.phoneNumber"
-        />
-
+    <ng-template #userActions let-user>
+      <div class="flex justify-center">
         <button
-          type="submit"
-          class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          type="button"
+          class="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+          (click)="openUserModal(user); updateUserEnabled.set(true)"
         >
-          Save
+          Edit
         </button>
-      </form>
-    </app-modal>
-  }
+      </div>
+    </ng-template>
+  </main>
 </div>
+
+@if (selectedUser(); as user) {
+  <app-modal title="Edit user" [wide]="true" (close)="closeUserModal()">
+    <section class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div class="flex items-center justify-between gap-4 border-b border-gray-200 p-6">
+        <div class="flex min-w-0 items-center gap-5">
+          <img
+            [src]="updateUserModel().pfpUrl"
+            alt="Profile picture"
+            class="h-20 w-20 shrink-0 rounded-full object-cover"
+          />
+
+          <div class="min-w-0">
+            <h2 class="truncate text-xl font-semibold">
+              {{ user.firstName }} {{ user.lastName }}
+            </h2>
+            <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                {{ user.role }}
+              </span>
+              <span class="text-xs text-gray-400">
+                Joined {{ user.createdAt | date: 'dd.MM.yyyy.' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        @if (!updateUserEnabled()) {
+          <button
+            type="button"
+            (click)="updateUserEnabled.set(true)"
+            class="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            Edit user
+          </button>
+        }
+      </div>
+
+      <form [formRoot]="updateUserForm" class="grid gap-5 p-6">
+        <div class="grid gap-5 md:grid-cols-2">
+          <div class="flex flex-col gap-1">
+            <label for="adminUserFirstName" class="text-sm font-medium text-gray-700">
+              First name
+            </label>
+            <input
+              id="adminUserFirstName"
+              type="text"
+              [formField]="updateUserForm.firstName"
+              [class.border-red-500]="showError(updateUserForm.firstName())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.firstName())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.firstName()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserLastName" class="text-sm font-medium text-gray-700">
+              Last name
+            </label>
+            <input
+              id="adminUserLastName"
+              type="text"
+              [formField]="updateUserForm.lastName"
+              [class.border-red-500]="showError(updateUserForm.lastName())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.lastName())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.lastName()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserEmail" class="text-sm font-medium text-gray-700">E-mail</label>
+            <input
+              id="adminUserEmail"
+              type="email"
+              [formField]="updateUserForm.email"
+              [class.border-red-500]="showError(updateUserForm.email())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.email())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.email()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserPhoneNumber" class="text-sm font-medium text-gray-700">
+              Phone number
+            </label>
+            <input
+              id="adminUserPhoneNumber"
+              type="text"
+              [formField]="updateUserForm.phoneNumber"
+              [class.border-red-500]="showError(updateUserForm.phoneNumber())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.phoneNumber())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.phoneNumber()) }}</p>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="adminUserPfpUrl" class="text-sm font-medium text-gray-700">
+            Profile picture URL
+          </label>
+          <input
+            id="adminUserPfpUrl"
+            type="text"
+            [formField]="updateUserForm.pfpUrl"
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </div>
+
+        <div class="grid gap-4 border-t border-gray-100 pt-5 text-sm md:grid-cols-2">
+          <div>
+            <p class="text-gray-500">User ID</p>
+            <p class="truncate font-medium text-gray-800">{{ user.id }}</p>
+          </div>
+
+          <div>
+            <p class="text-gray-500">Account status</p>
+            <p class="font-medium text-gray-800">
+              {{ user.enabled ? 'Enabled' : 'Disabled' }}
+            </p>
+          </div>
+        </div>
+
+        @if (updateUserEnabled()) {
+          <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
+            <button
+              type="button"
+              (click)="cancelUpdate()"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            >
+              Save changes
+            </button>
+          </div>
+        }
+      </form>
+    </section>
+  </app-modal>
+}

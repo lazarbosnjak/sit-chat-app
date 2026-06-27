@@ -2,7 +2,12 @@
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
   (click)="closeModal()"
 >
-  <div class="w-full max-w-md rounded-xl bg-white shadow-lg" (click)="$event.stopPropagation()">
+  <div
+    class="w-full rounded-xl bg-white shadow-lg"
+    [class.max-w-md]="!wide()"
+    [class.max-w-3xl]="wide()"
+    (click)="$event.stopPropagation()"
+  >
     <header class="flex items-center justify-between border-b border-gray-200 p-4">
       <div>
         <h2 class="text-lg font-semibold">{{ title() }}</h2>

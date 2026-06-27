@@ -6,6 +6,7 @@ import { Component, input, output } from '@angular/core';
 })
 export class ModalComponent {
   title = input.required<string>();
+  wide = input(false);
 
   close = output<void>();
 
