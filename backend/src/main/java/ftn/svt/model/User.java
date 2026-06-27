@@ -49,6 +49,13 @@ public class User {
 
     private boolean enabled;
 
+    @Enumerated(EnumType.STRING)
+    private UserBlockType blockType;
+
+    private String blockReason;
+
+    private Instant blockedAt;
+
     @CreatedDate
     private Instant createdAt;
 

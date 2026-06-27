@@ -1,0 +1,268 @@
+<div class="min-h-screen bg-gray-100 text-gray-900">
+  <main class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
+    <header class="flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold">Users</h1>
+        <p class="text-sm text-gray-500">Manage user account information</p>
+      </div>
+
+      <a
+        routerLink="/"
+        class="shrink-0 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
+      >
+        Back to home
+      </a>
+    </header>
+
+    <data-table
+      [columns]="columns"
+      [rows]="users()"
+      emptyMessage="No users found."
+      [actionTemplate]="userActions"
+    />
+
+    <ng-template #userActions let-user>
+      <div class="flex justify-center">
+        <button
+          type="button"
+          class="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+          (click)="openUserModal(user); updateUserEnabled.set(true)"
+        >
+          Edit
+        </button>
+      </div>
+    </ng-template>
+  </main>
+</div>
+
+@if (selectedUser(); as user) {
+  <app-modal title="Edit user" [wide]="true" (close)="closeUserModal()">
+    <section class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div class="flex items-center justify-between gap-4 border-b border-gray-200 p-6">
+        <div class="flex min-w-0 items-center gap-5">
+          <img
+            [src]="updateUserModel().pfpUrl"
+            alt="Profile picture"
+            class="h-20 w-20 shrink-0 rounded-full object-cover"
+          />
+
+          <div class="min-w-0">
+            <h2 class="truncate text-xl font-semibold">{{ user.firstName }} {{ user.lastName }}</h2>
+            <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                {{ user.role }}
+              </span>
+              <span class="text-xs text-gray-400">
+                Joined {{ user.createdAt | date: 'dd.MM.yyyy.' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        @if (!updateUserEnabled()) {
+          <button
+            type="button"
+            (click)="updateUserEnabled.set(true)"
+            class="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            Edit user
+          </button>
+        }
+      </div>
+
+      <form [formRoot]="updateUserForm" class="grid gap-5 p-6">
+        <div class="grid gap-5 md:grid-cols-2">
+          <div class="flex flex-col gap-1">
+            <label for="adminUserFirstName" class="text-sm font-medium text-gray-700">
+              First name
+            </label>
+            <input
+              id="adminUserFirstName"
+              type="text"
+              [formField]="updateUserForm.firstName"
+              [class.border-red-500]="showError(updateUserForm.firstName())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.firstName())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.firstName()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserLastName" class="text-sm font-medium text-gray-700">
+              Last name
+            </label>
+            <input
+              id="adminUserLastName"
+              type="text"
+              [formField]="updateUserForm.lastName"
+              [class.border-red-500]="showError(updateUserForm.lastName())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.lastName())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.lastName()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserEmail" class="text-sm font-medium text-gray-700">E-mail</label>
+            <input
+              id="adminUserEmail"
+              type="email"
+              [formField]="updateUserForm.email"
+              [class.border-red-500]="showError(updateUserForm.email())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.email())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.email()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserPhoneNumber" class="text-sm font-medium text-gray-700">
+              Phone number
+            </label>
+            <input
+              id="adminUserPhoneNumber"
+              type="text"
+              [formField]="updateUserForm.phoneNumber"
+              [class.border-red-500]="showError(updateUserForm.phoneNumber())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateUserForm.phoneNumber())) {
+              <p class="text-xs text-red-600">{{ firstError(updateUserForm.phoneNumber()) }}</p>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label for="adminUserPfpUrl" class="text-sm font-medium text-gray-700">
+            Profile picture URL
+          </label>
+          <input
+            id="adminUserPfpUrl"
+            type="text"
+            [formField]="updateUserForm.pfpUrl"
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </div>
+
+        <div class="grid gap-4 border-t border-gray-100 pt-5 text-sm md:grid-cols-3">
+          <div>
+            <p class="text-gray-500">User ID</p>
+            <p class="truncate font-medium text-gray-800">{{ user.id }}</p>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="adminUserRole" class="text-gray-500">Role</label>
+            <select
+              id="adminUserRole"
+              [formField]="updateUserForm.role"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            >
+              <option value="USER">User</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
+
+          <div>
+            <p class="text-gray-500">Account status</p>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <span class="font-medium text-gray-800">
+                {{ updateUserModel().enabled ? 'Active' : 'Blocked' }}
+              </span>
+
+              @if (updateUserModel().enabled) {
+                <button
+                  type="button"
+                  (click)="openBlockingMenu()"
+                  class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700"
+                >
+                  Block user
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="unblockUser()"
+                  class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700"
+                >
+                  Unblock user
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (blockingMenuOpen() || !updateUserModel().enabled) {
+          <div class="grid gap-5 rounded-lg border border-red-100 bg-red-50 p-4 md:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label for="adminUserBlockType" class="text-sm font-medium text-gray-700">
+                Block type
+              </label>
+              <select
+                id="adminUserBlockType"
+                [formField]="updateUserForm.blockType"
+                class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              >
+                <option value="TEMPORARY">Temporary</option>
+                <option value="PERMANENT">Permanent</option>
+              </select>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium text-gray-700">Blocked at</p>
+              <p class="mt-2 text-sm text-gray-800">
+                @if (user.blockedAt) {
+                  {{ user.blockedAt | date: 'dd.MM.yyyy. HH:mm' }}
+                } @else {
+                  Will be set when changes are saved
+                }
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-1 md:col-span-2">
+              <label for="adminUserBlockReason" class="text-sm font-medium text-gray-700">
+                Block reason
+              </label>
+              <textarea
+                id="adminUserBlockReason"
+                rows="3"
+                [formField]="updateUserForm.blockReason"
+                class="resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              ></textarea>
+            </div>
+          </div>
+        }
+
+        @if (updateError()) {
+          <p class="text-sm text-red-600">{{ updateError() }}</p>
+        }
+
+        @if (updateUserEnabled()) {
+          <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
+            <button
+              type="button"
+              (click)="cancelUpdate()"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            >
+              Save changes
+            </button>
+          </div>
+        }
+      </form>
+    </section>
+  </app-modal>
+}

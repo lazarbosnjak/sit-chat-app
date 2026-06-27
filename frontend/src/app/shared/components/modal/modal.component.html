@@ -2,15 +2,35 @@
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
   (click)="closeModal()"
 >
-  <div class="w-full max-w-md rounded-xl bg-white shadow-lg" (click)="$event.stopPropagation()">
-    <header class="flex items-center justify-between border-b border-gray-200 p-4">
+  <div
+    class="w-full rounded-xl bg-white shadow-lg"
+    [class.max-w-md]="!wide()"
+    [class.max-w-3xl]="wide()"
+    (click)="$event.stopPropagation()"
+  >
+    <header
+      class="flex items-center justify-between rounded-t-xl border-b p-4"
+      [class.border-gray-200]="variant() === 'default'"
+      [class.border-red-200]="variant() === 'error'"
+      [class.bg-red-50]="variant() === 'error'"
+    >
       <div>
-        <h2 class="text-lg font-semibold">{{ title() }}</h2>
+        <h2
+          class="text-lg font-semibold"
+          [class.text-gray-900]="variant() === 'default'"
+          [class.text-red-800]="variant() === 'error'"
+        >
+          {{ title() }}
+        </h2>
       </div>
 
       <button
         type="button"
-        class="rounded-full px-3 py-1 text-xl text-gray-500 transition hover:bg-gray-100"
+        class="rounded-full px-3 py-1 text-xl transition"
+        [class.text-gray-500]="variant() === 'default'"
+        [class.hover:bg-gray-100]="variant() === 'default'"
+        [class.text-red-700]="variant() === 'error'"
+        [class.hover:bg-red-100]="variant() === 'error'"
         (click)="closeModal()"
       >
         ×

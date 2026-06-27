@@ -1,0 +1,111 @@
+Projekat (SVT, KVT) 2026
+
+SitApp
+Potrebno je implementirati aplikaciju po uzoru na WhatsApp za podršku razmeni poruka,
+multimedijalnog sadržaja i grupnoj komunikaciji između korisnika.
+Korisnik aplikacije ima na raspolaganju sledeće funkcionalnosti:
+[K1] Registracija korisnika. Prilikom registracije korisnik unosi korisničko ime, lozinku, ime,
+prezime, broj telefona, email adresu i opcionu profilnu sliku. Administrator sistema je predefinisan
+korisnik u sistemu.
+[K2] Prijava i odjava sa sistema. Nije moguće pristupiti ostatku sistema bez prijave. Kada se
+korisnik uspešno prijavi na aplikaciju omogućiti korisniku da se odjavi.
+[K3] Pretraga korisnika i pokretanje razgovora. Korisnik može da pretraži ostale korisnike sistema
+po korisničkom imenu, imenu, prezimenu ili broju telefona. Moguće je odabrati i filtrirati korisnike po
+datumu poslednje aktivnosti i po tome da li im je profilna slika postavljena. Klikom na korisnika iz
+rezultata pretrage otvara se razgovor sa tim korisnikom.
+[K4] Slanje i prijem tekstualnih poruka. Korisnik može da pošalje tekstualnu poruku drugom
+korisniku u okviru razgovora. Poruka mora da sadrži tekst, vremensku oznaku slanja i informaciju o
+pošiljaocu. Poruke se prikazuju hronološki, a najnovije poruke su prikazane na dnu razgovora.
+Korisnik može u razgovoru da pretražuje poruke po sadržaju i da filtrira razgovore prema poslednjoj
+aktivnosti. Korisnik može da odgovori na konkretnu poruku (engl. reply) ili da je prosledi (engl.
+forward) drugom korisniku ili u grupu. Na poruke je moguće reagovati emoji reakcijama (npr. , ❤, 😂,
+👍). Više korisnika može reagovati na istu poruku, a broj reakcija po tipu se prikazuje uz poruku.
+
+
+[K5] Statusi isporuke poruka. Za svaku poslatu poruku prikazuje se indikator statusa: poslata
+(jedna kvačica), isporučena (dve kvačice) i pročitana (dve obojene kvačice). Status se ažurira kada
+primalac otvori razgovor i pročita poruku.
+[K6] Pregled razgovora i nepročitanih poruka. Korisnik na početnoj stranici vidi listu svojih
+razgovora (sa pojedinačnim korisnicima i grupama), sortiranu prema vremenu poslednje poruke. Za
+svaki razgovor prikazuje se broj nepročitanih poruka. Korisnik može da označi poruku kao sačuvanu
+(engl. starred). Postoji posebna stranica na kojoj se prikazuju sve sačuvane poruke korisnika,
+sortirane po datumu, sa mogućnošću prelaska na originalni razgovor.
+[K7] Kreiranje i upravljanje grupama. Korisnik može da kreira grupu, pri čemu unosi naziv grupe,
+opcioni opis i opcionu sliku grupe, i dodaje članove iz liste svojih kontakata. Korisnik koji kreira grupu
+postaje administrator grupe. Administrator grupe može da dodaje i uklanja članove, da menja naziv,
+opis i sliku grupe, da postavi druge članove za administratore i da generiše pozivni link (engl. invite
+link) preko kojeg drugi korisnici mogu da se pridruže grupi. Slanje poruka u grupi funkcioniše
+analogno razgovoru sa pojedinačnim korisnikom (K4).
+[K8] Upravljanje profilom. Korisnik može da promeni svoje ime, prezime, broj telefona, email
+adresu i profilnu sliku. Pored toga, korisnik može da postavi i menja kratku biografiju (engl.
+about/status, npr. „Dostupan“, „Na sastanku“) koja je vidljiva ostalim korisnicima na njegovom
+profilu.
+[K9] Promena lozinke. Pri promeni lozinke prvo se unosi trenutna lozinka i dva puta se unosi nova
+lozinka. Nakon promene lozinke korisniku se šalje mejl o uspešnoj promeni.
+[K10] Slanje glasovnih poruka. Korisnik može da snimi glasovnu poruku direktno u pretraživaču
+(koristeći Web API za pristup mikrofonu) i da je pošalje drugom korisniku ili u grupu. Glasovna poruka
+se prikazuje u razgovoru kao audio plejer sa dugmetom za reprodukciju, prikazom trajanja i progres
+barom. Skladištenje i posluživanje glasovnih poruka realizuje se kao zaseban mikroservis (vidi sekciju
+Multimedijalni mikroservis).
+
+Projekat (SVT, KVT) 2026
+Administrator grupe ima na raspolaganju sve funkcionalnosti koje ima i registrovan korisnik, kao i:
+[G1] Upravljanje članovima grupe. Administrator grupe može da doda nove članove iz liste svojih
+kontakata, da ukloni postojeće članove, kao i da postavi druge članove za administratore grupe ili im
+oduzme tu ulogu. Pri uklanjanju člana, njegove ranije poslate poruke ostaju u istoriji razgovora.
+[G2] Ažuriranje podataka o grupi. Administrator grupe može da promeni naziv grupe, opis i sliku.
+Promene se beleže kao sistemske poruke u razgovoru (npr. „Korisnik X je promenio naziv grupe u Y“).
+[G3] Generisanje i poništavanje pozivnih linkova. Administrator grupe može da generiše pozivni
+link kojim korisnici van grupe mogu da se pridruže, kao i da poništi (engl. revoke) postojeći link i
+generiše novi.
+Administrator sistema ima na raspolaganju sve funkcionalnosti koje ima i registrovan korisnik, ali i:
+[A1] Obrada zahteva za registraciju. Administrator ima pravo da prihvati ili odbije zahtev za
+registraciju. Korisnik može da se prijavi na sistem tek kada je zahtev za registraciju prihvaćen. Nakon
+što je zahtev obrađen, korisniku se šalje mejl.
+[A2] Upravljanje korisničkim nalozima. Administrator sistema može da privremeno ili trajno
+blokira korisnika zbog neprimerenog ponašanja, kao i da ukloni blokadu. Blokiran korisnik ne može
+da se prijavi na sistem niti da šalje poruke. Razlog blokade i datum su vidljivi administratoru.
+[A3] Analitika sistema (engl. analytics). Za proizvoljno definisan vremenski opseg (početni i krajnji
+datum) administrator sistema može da vidi: ukupan broj registrovanih korisnika, broj aktivnih
+korisnika, ukupan broj razmenjenih poruka (tekstualnih i glasovnih), broj kreiranih grupa i top-listu
+najaktivnijih korisnika i grupa po broju poruka. Statistika je dostupna na dnevnom, nedeljnom,
+mesečnom i godišnjem nivou. [Za predmet KVA]: Koristiti grafičku biblioteku za vizuelizaciju, poput
+Chart.js, Apache ECharts ili sl.
+
+Multimedijalni mikroservis (glasovne poruke)
+Funkcionalnost slanja glasovnih poruka (K10) realizuje se kao zaseban mikroservis odvojen od glavne
+(Spring Boot) aplikacije. Mikroservis može biti implementiran u proizvoljnoj tehnologiji (Spring Boot,
+Python sa FastAPI/Flask, Node.js sa Express ili sl.). Glavna aplikacija i mikroservis komuniciraju preko
+REST API-ja, a po potrebi i preko deljenog skladišta (npr. fajl sistem ili objektno skladište).
+Mikroservis treba da omogući:
+•​ upload audio fajla (npr. u WebM/Opus ili MP3 formatu) sa metapodacima (pošiljalac,
+primalac/grupa, trajanje, vremenska oznaka);
+•​ posluživanje (engl. streaming) audio fajla na zahtev klijenta, uz odgovarajuće HTTP zaglavlja
+za parcijalan sadržaj (Range requests);
+•​ brisanje audio fajla u slučaju da pošiljalac obriše svoju poruku;
+•​ autorizaciju zahteva. samo učesnici razgovora ili članovi grupe mogu da preuzmu
+odgovarajuću glasovnu poruku.
+Komunikacija između klijenta i glavne aplikacije za potrebe obaveštavanja o novim porukama
+(uključujući glasovne) treba da bude realizovana u realnom vremenu, korišćenjem WebSocket (npr.
+STOMP nad SockJS) protokola. Za niže ocene (do 9) prihvatljiva je periodična provera (engl. polling)
+novih poruka.
+
+Projekat (SVT, KVT) 2026
+
+Tehnologije za implementaciju
+Za implementaciju aplikacije iskoristiti sledeće softverske pakete:
+•​ Za serversku veb tehnologiju glavne aplikacije:
+◦​ Spring Framework (Spring Boot, Spring Security, Spring Data JPA)
+◦​ Apache Tomcat (može biti embedovani, kao Spring Boot default)
+◦​ Hibernate kao JPA implementacija
+◦​ Relaciona baza podataka (PostgreSQL ili MySQL)
+◦​ WebSocket / STOMP (za realnovremensku razmenu poruka, obavezno za ocenu 10)
+•​ Za klijentsku veb tehnologiju:
+◦​ Angular (verzija 17 ili novija)
+◦​ TypeScript
+◦​ Web Audio API / MediaRecorder API (za snimanje glasovnih poruka)
+•​ Za multimedijalni mikroservis (ocena 10):
+◦​ Proizvoljno: Spring Boot, Python (FastAPI/Flask), Node.js (Express) ili sl.
+◦​ Skladište fajlova: lokalni fajl sistem ili objektno skladište (npr. MinIO)
+◦​ REST API za komunikaciju sa glavnom aplikacijom
+

@@ -2,10 +2,13 @@ package ftn.svt.controller;
 
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.User;
+import ftn.svt.model.dto.user.UpdateUserProfileRequest;
 import ftn.svt.model.dto.user.UserInfoDTO;
 import ftn.svt.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -37,36 +40,25 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<?> getMe(Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        UserInfoDTO dto = new UserInfoDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getPhoneNumber(),
-                user.getEmail(),
-                user.getPfpUrl(),
-                user.getRole().toString(),
-                user.getCreatedAt(),
-                user.isEnabled()
-        );
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(UserInfoDTO.from(user));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getOneById(@PathVariable UUID id) {
         User user = userService.findOneById(id);
-        UserInfoDTO dto = new UserInfoDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getPhoneNumber(),
-                user.getEmail(),
-                user.getPfpUrl(),
-                user.getRole().toString(),
-                user.getCreatedAt(),
-                user.isEnabled()
-        );
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(UserInfoDTO.from(user));
+    }
+
+    @PreAuthorize("@userSecurity.isSelf(authentication, #id)")
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateById(
+            @PathVariable UUID id,
+            @RequestBody @Valid UpdateUserProfileRequest dto
+    ) {
+
+        User updatedUser = userService.updateProfile(id, dto);
+
+        return ResponseEntity
+                .ok(UserInfoDTO.from(updatedUser));
     }
 }

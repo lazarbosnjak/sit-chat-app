@@ -3,6 +3,7 @@ import { HomeComponent } from './features/home/home.component';
 import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from '@core/guards/admin.guard';
 import { ChatComponent } from '@features/chat/chat.component';
+import { ProfileComponent } from '@features/profile/profile.component';
 
 export const routes: Routes = [
   {
@@ -23,5 +24,11 @@ export const routes: Routes = [
   {
     path: 'chats/:id',
     component: ChatComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'profile',
+    component: ProfileComponent,
+    canActivate: [authGuard],
   },
 ];

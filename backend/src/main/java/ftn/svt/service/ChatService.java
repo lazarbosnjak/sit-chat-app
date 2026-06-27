@@ -139,6 +139,13 @@ public class ChatService {
 
     @Transactional
     public MessageResponse sendMessage(String senderUsername, UUID chatId, String content) {
+        User sender = userRepository.findByUsername(senderUsername)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
+
+        if (!sender.isEnabled()) {
+            throw ApiException.forbidden("Blocked users cannot send messages");
+        }
+
         if (content == null || content.isBlank()) {
             throw ApiException.badRequest("Message content cannot be empty");
         }

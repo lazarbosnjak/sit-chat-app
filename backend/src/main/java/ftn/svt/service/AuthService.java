@@ -11,10 +11,6 @@ import ftn.svt.repository.RegistrationRequestFormRepository;
 import ftn.svt.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -31,7 +27,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
     private final RegistrationRequestFormRepository formRepository;
 
@@ -71,15 +66,22 @@ public class AuthService {
     }
 
     public String login(@Valid LoginRequest dto) {
-        UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(dto.username(), dto.password());
-        Authentication authentication = authenticationManager.authenticate(authToken);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        User user = userRepository.findByUsername(dto.username())
+                .orElseThrow(() -> ApiException.unauthorized("Invalid login credentials"));
+
+        if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
+            throw ApiException.unauthorized("Invalid login credentials");
+        }
+
+        if (!user.isEnabled()) {
+            String blockReason = user.getBlockReason() == null || user.getBlockReason().isBlank()
+                    ? "No reason provided"
+                    : user.getBlockReason();
+            throw ApiException.forbidden("Your account is blocked. Reason: " + blockReason);
+        }
 
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(dto.username());
-            User user = userRepository.findByUsername(dto.username())
-                    .orElseThrow(() -> ApiException.unauthorized("Username not found"));
             return jwtUtils.generateToken(userDetails, user.getId());
         } catch (UsernameNotFoundException ex) {
             throw ApiException.unauthorized(ex.getMessage());

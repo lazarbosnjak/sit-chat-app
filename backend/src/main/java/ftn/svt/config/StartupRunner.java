@@ -102,6 +102,9 @@ public class StartupRunner implements CommandLineRunner {
                 .email("milan@milanovic.com")
                 .pfpUrl("https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg")
                 .enabled(false)
+                .blockType(UserBlockType.TEMPORARY)
+                .blockReason("Seed account is blocked for moderation review")
+                .blockedAt(Instant.now())
                 .createdAt(null)
                 .build();
 
