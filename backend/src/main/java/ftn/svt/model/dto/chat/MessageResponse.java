@@ -1,6 +1,7 @@
 package ftn.svt.model.dto.chat;
 
 import ftn.svt.model.Message;
+import ftn.svt.model.ReceiptStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,9 +13,14 @@ public record MessageResponse(
         UUID replyToMessageId,
         UUID forwardedFromMessageId,
         String content,
-        Instant createdAt
+        Instant createdAt,
+        ReceiptStatus deliveryStatus
 ) {
     public static MessageResponse from(Message message) {
+        return from(message, ReceiptStatus.SENT);
+    }
+
+    public static MessageResponse from(Message message, ReceiptStatus deliveryStatus) {
         return new MessageResponse(
                 message.getId(),
                 message.getChat().getId(),
@@ -26,7 +32,8 @@ public record MessageResponse(
                         ? message.getForwardedFrom().getId()
                         : null,
                 message.getContent(),
-                message.getCreatedAt()
+                message.getCreatedAt(),
+                deliveryStatus
         );
     }
 }

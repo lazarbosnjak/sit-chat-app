@@ -2,17 +2,18 @@ package ftn.svt.controller;
 
 import ftn.svt.config.security.ChatSecurity;
 import ftn.svt.model.Chat;
-import ftn.svt.model.Message;
 import ftn.svt.model.MessageReceipt;
+import ftn.svt.model.dto.chat.ChatEventResponse;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
 import ftn.svt.model.dto.chat.MessageReceiptResponse;
-import ftn.svt.model.dto.chat.MessageResponse;
+import ftn.svt.model.dto.chat.MessageStatusResponse;
 import ftn.svt.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final ChatSecurity chatSecurity;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping
     public ResponseEntity<?> create(
@@ -66,9 +68,7 @@ public class ChatController {
     public ResponseEntity<?> getMessagesByChatId(
             @PathVariable UUID chatId
     ) {
-        List<Message> messages = chatService.getMessagesByChatId(chatId);
-        var res = messages.stream().map(MessageResponse::from).toList();
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(chatService.getMessagesByChatId(chatId));
     }
 
     @PreAuthorize("@chatSecurity.canAccessChat(authentication, #chatId)")
@@ -89,7 +89,28 @@ public class ChatController {
             @PathVariable UUID chatId,
             Principal principal
     ) {
-        chatService.markChatAsRead(chatId, principal);
+        List<MessageStatusResponse> messageStatuses = chatService.markChatAsRead(chatId, principal);
+
+        if (!messageStatuses.isEmpty()) {
+            Collection<String> memberUsernames = chatService.getChatMemberUsernames(chatId);
+
+            for (String username : memberUsernames) {
+                ChatEventResponse event = new ChatEventResponse(
+                        "MESSAGE_STATUSES_UPDATED",
+                        chatId,
+                        null,
+                        chatService.getUnreadCount(chatId, username),
+                        messageStatuses
+                );
+
+                messagingTemplate.convertAndSendToUser(
+                        username,
+                        "/queue/chat-events",
+                        event
+                );
+            }
+        }
+
         return ResponseEntity.noContent().build();
     }
 }

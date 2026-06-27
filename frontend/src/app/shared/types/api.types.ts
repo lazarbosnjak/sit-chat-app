@@ -72,23 +72,32 @@ export interface Message {
   replyToMessageId?: string;
   forwardedFromMessageId?: string;
   createdAt: Date;
+  deliveryStatus: MessageDeliveryStatus;
 }
+
+export type MessageDeliveryStatus = 'SENT' | 'DELIVERED' | 'READ';
 
 export interface MessageReceipt {
   messageId: string;
   recipientMemberId: string;
   recipientUsername: string;
   recipientPfpUrl: string;
-  status: 'SENT' | 'DELIVERED' | 'READ';
+  status: MessageDeliveryStatus;
   deliveredAt: Date;
   readAt: Date;
 }
 
-export type ChatEventType = 'MESSAGE_CREATED';
+export interface MessageStatus {
+  messageId: string;
+  status: MessageDeliveryStatus;
+}
+
+export type ChatEventType = 'MESSAGE_CREATED' | 'MESSAGE_STATUSES_UPDATED';
 
 export interface ChatEvent {
   type: ChatEventType;
   chatId: string;
-  message: Message;
+  message?: Message;
   unreadCount: number;
+  messageStatuses?: MessageStatus[];
 }

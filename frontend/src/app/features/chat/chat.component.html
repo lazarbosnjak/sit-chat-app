@@ -56,11 +56,26 @@
                 </p>
 
                 <div
-                  class="mt-1 text-right text-xs"
+                  class="mt-1 flex items-center justify-end gap-1 text-xs"
                   [class.text-blue-100]="isOwnMessage(message)"
                   [class.text-gray-400]="!isOwnMessage(message)"
                 >
-                  {{ formatMessageTime(message.createdAt) }}
+                  <span>{{ formatMessageTime(message.createdAt) }}</span>
+
+                  @if (isOwnMessage(message)) {
+                    <span
+                      class="inline-flex min-w-4 justify-end font-semibold leading-none"
+                      [class.text-cyan-200]="message.deliveryStatus === 'READ'"
+                      [attr.aria-label]="getMessageStatusLabel(message.deliveryStatus)"
+                      [title]="getMessageStatusLabel(message.deliveryStatus)"
+                    >
+                      @if (message.deliveryStatus === 'SENT') {
+                        &#10003;
+                      } @else {
+                        &#10003;&#10003;
+                      }
+                    </span>
+                  }
                 </div>
               </div>
             </div>

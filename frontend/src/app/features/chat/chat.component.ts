@@ -18,7 +18,15 @@ import { ChatService } from '@core/services/chat.service';
 import { StompService } from '@core/services/stomp.service';
 import { UserService } from '@core/services/user.service';
 import { SidebarComponent } from '@shared/components/sidebar/sidebar.component';
-import { Chat, ChatEvent, Message, MessageReceipt, User } from '@shared/types/api.types';
+import {
+  Chat,
+  ChatEvent,
+  Message,
+  MessageDeliveryStatus,
+  MessageReceipt,
+  MessageStatus,
+  User,
+} from '@shared/types/api.types';
 import { StompSubscription } from '@stomp/stompjs';
 import { forkJoin, switchMap, tap } from 'rxjs';
 
@@ -206,10 +214,21 @@ export class ChatComponent {
   private handleChatEvent(event: ChatEvent): void {
     if (event.type === 'MESSAGE_CREATED') {
       this.handleMessageCreated(event);
+      return;
+    }
+
+    if (event.type === 'MESSAGE_STATUSES_UPDATED') {
+      this.handleMessageStatusesUpdated(event.messageStatuses ?? []);
     }
   }
 
   private handleMessageCreated(event: ChatEvent): void {
+    const createdMessage = event.message;
+
+    if (!createdMessage) {
+      return;
+    }
+
     const selectedChatId = this.selectedChatId();
 
     if (event.chatId !== selectedChatId) {
@@ -217,17 +236,35 @@ export class ChatComponent {
       return;
     }
 
-    const messageAlreadyExist = this.messages().some((message) => message.id === event.message.id);
+    const messageAlreadyExist = this.messages().some((message) => message.id === createdMessage.id);
 
     if (messageAlreadyExist) {
       return;
     }
 
-    this.messages.update((old) => [...old, event.message]);
+    this.messages.update((old) => [...old, createdMessage]);
 
-    if (!this.isOwnMessage(event.message)) {
+    if (!this.isOwnMessage(createdMessage)) {
       this.markCurrentChatAsRead();
     }
+  }
+
+  private handleMessageStatusesUpdated(messageStatuses: MessageStatus[]): void {
+    if (messageStatuses.length === 0) {
+      return;
+    }
+
+    const statusesByMessageId = new Map(
+      messageStatuses.map((messageStatus) => [messageStatus.messageId, messageStatus.status]),
+    );
+
+    this.messages.update((messages) =>
+      messages.map((message) => {
+        const deliveryStatus = statusesByMessageId.get(message.id);
+
+        return deliveryStatus ? { ...message, deliveryStatus } : message;
+      }),
+    );
   }
 
   sendMessage(): void {
@@ -261,5 +298,17 @@ export class ChatComponent {
       .subscribe({
         error: (err) => console.error('Could not mark chat as read', err),
       });
+  }
+
+  getMessageStatusLabel(status: MessageDeliveryStatus): string {
+    if (status === 'READ') {
+      return 'Read';
+    }
+
+    if (status === 'DELIVERED') {
+      return 'Delivered';
+    }
+
+    return 'Sent';
   }
 }

@@ -3,6 +3,7 @@ package ftn.svt.controller;
 import ftn.svt.model.dto.chat.ChatEventResponse;
 import ftn.svt.model.dto.chat.ChatMessageRequest;
 import ftn.svt.model.dto.chat.MessageResponse;
+import ftn.svt.model.dto.chat.MessageStatusResponse;
 import ftn.svt.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
 import java.util.Collection;
+import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
@@ -36,7 +38,8 @@ public class ChatWebSocketController {
                     "MESSAGE_CREATED",
                     request.chatId(),
                     savedMessage,
-                    unreadCount
+                    unreadCount,
+                    List.of()
             );
 
             messagingTemplate.convertAndSendToUser(
@@ -49,6 +52,25 @@ public class ChatWebSocketController {
                     username,
                     "/queue/messages",
                     savedMessage
+            );
+        }
+
+        MessageStatusResponse deliveredStatus =
+                chatService.markMessageAsDelivered(savedMessage.id());
+
+        for (String username : memberUsernames) {
+            ChatEventResponse event = new ChatEventResponse(
+                    "MESSAGE_STATUSES_UPDATED",
+                    request.chatId(),
+                    null,
+                    chatService.getUnreadCount(request.chatId(), username),
+                    List.of(deliveredStatus)
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/chat-events",
+                    event
             );
         }
     }

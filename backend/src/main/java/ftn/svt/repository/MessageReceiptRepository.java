@@ -9,12 +9,32 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface MessageReceiptRepository extends JpaRepository<MessageReceipt, UUID> {
     List<MessageReceipt> findByMessageChatId(UUID chatId);
+
+    List<MessageReceipt> findByMessageId(UUID messageId);
+
+    List<MessageReceipt> findByMessageIdIn(Collection<UUID> messageIds);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update MessageReceipt r
+            set r.status = :deliveredStatus,
+                r.deliveredAt = :deliveredAt
+            where r.message.id = :messageId
+              and r.status = :sentStatus
+            """)
+    int markMessageAsDelivered(
+            @Param("messageId") UUID messageId,
+            @Param("sentStatus") ReceiptStatus sentStatus,
+            @Param("deliveredStatus") ReceiptStatus deliveredStatus,
+            @Param("deliveredAt") Instant deliveredAt
+    );
 
     @Query("""
             select r.message.chat.id, count(r)
@@ -37,20 +57,16 @@ public interface MessageReceiptRepository extends JpaRepository<MessageReceipt, 
             @Param("userId") UUID userId
     );
 
-    @Modifying
     @Query("""
-            update MessageReceipt r
-            set r.status = :status,
-                r.readAt = :readAt
+            select r
+            from MessageReceipt r
             where r.message.chat.id = :chatId
               and r.recipient.user.id = :userId
               and r.readAt is null
             """)
-    int markChatAsRead(
+    List<MessageReceipt> findUnreadByChatIdAndUserId(
             @Param("chatId") UUID chatId,
-            @Param("userId") UUID userId,
-            @Param("status") ReceiptStatus status,
-            @Param("readAt") Instant readAt
+            @Param("userId") UUID userId
     );
 
 }

@@ -5,6 +5,7 @@ import ftn.svt.model.*;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
 import ftn.svt.model.dto.chat.MessageResponse;
+import ftn.svt.model.dto.chat.MessageStatusResponse;
 import ftn.svt.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -107,8 +108,17 @@ public class ChatService {
                 .orElseThrow(() -> ApiException.notFound("Chat with this id does not exist"));
     }
 
-    public List<Message> getMessagesByChatId(UUID chatId) {
-        return messageRepository.findAllByChatId(chatId);
+    @Transactional(readOnly = true)
+    public List<MessageResponse> getMessagesByChatId(UUID chatId) {
+        List<Message> messages = messageRepository.findAllByChatId(chatId);
+        Map<UUID, ReceiptStatus> deliveryStatuses = getDeliveryStatuses(messages);
+
+        return messages.stream()
+                .map(message -> MessageResponse.from(
+                        message,
+                        deliveryStatuses.getOrDefault(message.getId(), ReceiptStatus.SENT)
+                ))
+                .toList();
     }
 
     public List<MessageReceipt> getMessageReceiptsByChatId(UUID chatId) {
@@ -125,16 +135,33 @@ public class ChatService {
     }
 
     @Transactional
-    public void markChatAsRead(UUID chatId, Principal principal) {
+    public List<MessageStatusResponse> markChatAsRead(UUID chatId, Principal principal) {
         User user = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> ApiException.unauthorized("User not found"));
 
-        messageReceiptRepository.markChatAsRead(
-                chatId,
-                user.getId(),
-                ReceiptStatus.READ,
-                Instant.now()
-        );
+        List<MessageReceipt> unreadReceipts = messageReceiptRepository
+                .findUnreadByChatIdAndUserId(chatId, user.getId());
+
+        if (unreadReceipts.isEmpty()) {
+            return List.of();
+        }
+
+        Instant now = Instant.now();
+
+        unreadReceipts.forEach(receipt -> {
+            receipt.setStatus(ReceiptStatus.READ);
+            receipt.setReadAt(now);
+
+            if (receipt.getDeliveredAt() == null) {
+                receipt.setDeliveredAt(now);
+            }
+        });
+
+        messageReceiptRepository.saveAll(unreadReceipts);
+
+        return getStatusUpdatesForMessages(unreadReceipts.stream()
+                .map(receipt -> receipt.getMessage().getId())
+                .collect(Collectors.toSet()));
     }
 
     @Transactional
@@ -175,8 +202,8 @@ public class ChatService {
                     return MessageReceipt.builder()
                             .message(savedMessage)
                             .recipient(recipient)
-                            .status(isSender ? ReceiptStatus.READ : ReceiptStatus.DELIVERED)
-                            .deliveredAt(now)
+                            .status(isSender ? ReceiptStatus.READ : ReceiptStatus.SENT)
+                            .deliveredAt(isSender ? now : null)
                             .readAt(isSender ? now : null)
                             .build();
                 })
@@ -184,11 +211,89 @@ public class ChatService {
 
         messageReceiptRepository.saveAll(receipts);
 
-        return MessageResponse.from(savedMessage);
+        return MessageResponse.from(savedMessage, getDeliveryStatus(receipts));
+    }
+
+    @Transactional
+    public MessageStatusResponse markMessageAsDelivered(UUID messageId) {
+        messageReceiptRepository.markMessageAsDelivered(
+                messageId,
+                ReceiptStatus.SENT,
+                ReceiptStatus.DELIVERED,
+                Instant.now()
+        );
+
+        List<MessageReceipt> receipts = messageReceiptRepository.findByMessageId(messageId);
+        return new MessageStatusResponse(messageId, getDeliveryStatus(receipts));
     }
 
     @Transactional(readOnly = true)
     public Collection<String> getChatMemberUsernames(UUID chatId) {
         return chatMemberRepository.findUsernamesByChatId(chatId);
+    }
+
+    private List<MessageStatusResponse> getStatusUpdatesForMessages(Collection<UUID> messageIds) {
+        if (messageIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<MessageReceipt> receipts = messageReceiptRepository.findByMessageIdIn(messageIds);
+        Map<UUID, List<MessageReceipt>> receiptsByMessageId = receipts.stream()
+                .collect(Collectors.groupingBy(receipt -> receipt.getMessage().getId()));
+
+        return messageIds.stream()
+                .map(messageId -> new MessageStatusResponse(
+                        messageId,
+                        getDeliveryStatus(receiptsByMessageId.getOrDefault(messageId, List.of()))
+                ))
+                .toList();
+    }
+
+    private Map<UUID, ReceiptStatus> getDeliveryStatuses(List<Message> messages) {
+        if (messages.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<UUID> messageIds = messages.stream()
+                .map(Message::getId)
+                .collect(Collectors.toSet());
+
+        List<MessageReceipt> receipts = messageReceiptRepository.findByMessageIdIn(messageIds);
+        Map<UUID, List<MessageReceipt>> receiptsByMessageId = receipts.stream()
+                .collect(Collectors.groupingBy(receipt -> receipt.getMessage().getId()));
+
+        return messages.stream()
+                .collect(Collectors.toMap(
+                        Message::getId,
+                        message -> getDeliveryStatus(
+                                receiptsByMessageId.getOrDefault(message.getId(), List.of())
+                        )
+                ));
+    }
+
+    private ReceiptStatus getDeliveryStatus(List<MessageReceipt> receipts) {
+        List<MessageReceipt> recipientReceipts = receipts.stream()
+                .filter(receipt -> !isSenderReceipt(receipt))
+                .toList();
+
+        if (recipientReceipts.isEmpty()) {
+            return ReceiptStatus.READ;
+        }
+
+        boolean allRead = recipientReceipts.stream()
+                .allMatch(receipt -> receipt.getStatus() == ReceiptStatus.READ);
+
+        if (allRead) {
+            return ReceiptStatus.READ;
+        }
+
+        boolean allDelivered = recipientReceipts.stream()
+                .allMatch(receipt -> receipt.getStatus() != ReceiptStatus.SENT);
+
+        return allDelivered ? ReceiptStatus.DELIVERED : ReceiptStatus.SENT;
+    }
+
+    private boolean isSenderReceipt(MessageReceipt receipt) {
+        return receipt.getRecipient().getId().equals(receipt.getMessage().getSender().getId());
     }
 }
