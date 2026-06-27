@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -64,6 +66,36 @@ public class UserService {
         if (user.isEnabled() != dto.enabled()) {
             user.setEnabled(dto.enabled());
             changes++;
+        }
+        if (dto.enabled()) {
+            if (user.getBlockType() != null || user.getBlockReason() != null || user.getBlockedAt() != null) {
+                user.setBlockType(null);
+                user.setBlockReason(null);
+                user.setBlockedAt(null);
+                changes++;
+            }
+        } else {
+            if (dto.blockType() == null) {
+                throw ApiException.badRequest("Block type is required");
+            }
+            if (dto.blockReason() == null || dto.blockReason().isBlank()) {
+                throw ApiException.badRequest("Block reason is required");
+            }
+
+            String blockReason = dto.blockReason().trim();
+
+            if (user.getBlockType() != dto.blockType()) {
+                user.setBlockType(dto.blockType());
+                changes++;
+            }
+            if (!Objects.equals(user.getBlockReason(), blockReason)) {
+                user.setBlockReason(blockReason);
+                changes++;
+            }
+            if (user.getBlockedAt() == null) {
+                user.setBlockedAt(Instant.now());
+                changes++;
+            }
         }
         if (user.getRole() != dto.role()) {
             user.setRole(dto.role());

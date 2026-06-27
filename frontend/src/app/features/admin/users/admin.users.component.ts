@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import {
   debounce,
@@ -29,6 +29,8 @@ interface UpdateUserModel {
   pfpUrl: string;
   enabled: boolean;
   role: 'ADMIN' | 'USER';
+  blockType: 'TEMPORARY' | 'PERMANENT';
+  blockReason: string;
 }
 
 @Component({
@@ -51,6 +53,8 @@ export class AdminUsersComponent {
   users = signal<User[]>([]);
   selectedUser = signal<User | null>(null);
   updateUserEnabled = signal(false);
+  blockingMenuOpen = signal(false);
+  updateError = signal<string | null>(null);
 
   updateUserModel = signal<UpdateUserModel>({
     firstName: '',
@@ -60,6 +64,8 @@ export class AdminUsersComponent {
     pfpUrl: '',
     enabled: false,
     role: 'USER',
+    blockType: 'TEMPORARY',
+    blockReason: '',
   });
 
   updateUserForm = form(
@@ -87,24 +93,15 @@ export class AdminUsersComponent {
             throw new Error('User does not exist');
           }
 
-          const userToUpdate: User = {
-            ...currentUser,
-            ...field().value(),
-          };
+          this.updateError.set(null);
+          const updateValue = field().value();
 
-          try {
-            const updatedUser = await firstValueFrom(
-              this.http.put<User>(`${env.apiUrl}/admin/users/${currentUser.id}`, userToUpdate),
-            );
-
-            this.selectedUser.set(updatedUser);
-            this.users.update((users) =>
-              users.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
-            );
-            this.updateUserEnabled.set(false);
-          } catch (error) {
-            console.error(error);
+          if (!updateValue.enabled && !updateValue.blockReason.trim()) {
+            this.updateError.set('Block reason is required');
+            return;
           }
+
+          await this.saveUser(updateValue);
         },
         onInvalid: (field) => {
           const firstError = field().errorSummary()[0];
@@ -129,11 +126,15 @@ export class AdminUsersComponent {
     this.selectedUser.set(user);
     this.setupUpdateForm(user);
     this.updateUserEnabled.set(false);
+    this.blockingMenuOpen.set(false);
+    this.updateError.set(null);
   }
 
   closeUserModal() {
     this.selectedUser.set(null);
     this.updateUserEnabled.set(false);
+    this.blockingMenuOpen.set(false);
+    this.updateError.set(null);
   }
 
   setupUpdateForm(user: User) {
@@ -145,6 +146,8 @@ export class AdminUsersComponent {
       pfpUrl: user.pfpUrl,
       enabled: user.enabled,
       role: user.role,
+      blockType: user.blockType ?? 'TEMPORARY',
+      blockReason: user.blockReason ?? '',
     });
   }
 
@@ -154,6 +157,62 @@ export class AdminUsersComponent {
 
     this.setupUpdateForm(user);
     this.updateUserEnabled.set(false);
+    this.blockingMenuOpen.set(false);
+    this.updateError.set(null);
+  }
+
+  openBlockingMenu() {
+    this.updateUserEnabled.set(true);
+    this.blockingMenuOpen.set(true);
+    this.updateError.set(null);
+    this.updateUserModel.update((user) => ({
+      ...user,
+      enabled: false,
+      blockType: user.blockType ?? 'TEMPORARY',
+      blockReason: '',
+    }));
+  }
+
+  async unblockUser() {
+    this.updateError.set(null);
+    await this.saveUser({
+      ...this.updateUserModel(),
+      enabled: true,
+      blockReason: '',
+    });
+  }
+
+  private async saveUser(updateValue: UpdateUserModel) {
+    const currentUser = this.selectedUser();
+    if (!currentUser) {
+      throw new Error('User does not exist');
+    }
+
+    const userToUpdate: User = {
+      ...currentUser,
+      ...updateValue,
+      blockReason: updateValue.blockReason.trim(),
+    };
+
+    try {
+      const updatedUser = await firstValueFrom(
+        this.http.put<User>(`${env.apiUrl}/admin/users/${currentUser.id}`, userToUpdate),
+      );
+
+      this.selectedUser.set(updatedUser);
+      this.users.update((users) =>
+        users.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
+      );
+      this.setupUpdateForm(updatedUser);
+      this.updateUserEnabled.set(false);
+      this.blockingMenuOpen.set(false);
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        this.updateError.set(error.error?.detail ?? 'Unable to update user');
+        return;
+      }
+      console.error(error);
+    }
   }
 
   showError(field: { touched: () => boolean; dirty: () => boolean; invalid: () => boolean }) {

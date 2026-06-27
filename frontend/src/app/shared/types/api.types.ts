@@ -38,6 +38,9 @@ export interface User {
   role: 'ADMIN' | 'USER';
   createdAt: Date;
   enabled: boolean;
+  blockType?: 'TEMPORARY' | 'PERMANENT';
+  blockReason?: string;
+  blockedAt?: Date;
 }
 
 export interface Chat {

@@ -1,5 +1,6 @@
 package ftn.svt.model.dto.user;
 
+import ftn.svt.model.UserBlockType;
 import ftn.svt.model.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -24,6 +25,10 @@ public record UpdateUserRequest(
 
         boolean enabled,
 
-        UserRole role
+        UserRole role,
+
+        UserBlockType blockType,
+
+        String blockReason
 ) {
 }

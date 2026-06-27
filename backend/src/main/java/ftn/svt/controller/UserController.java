@@ -40,37 +40,13 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<?> getMe(Principal principal) {
         User user = userService.findByUsername(principal.getName());
-        UserInfoDTO dto = new UserInfoDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getPhoneNumber(),
-                user.getEmail(),
-                user.getPfpUrl(),
-                user.getRole().toString(),
-                user.getCreatedAt(),
-                user.isEnabled()
-        );
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(UserInfoDTO.from(user));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getOneById(@PathVariable UUID id) {
         User user = userService.findOneById(id);
-        UserInfoDTO dto = new UserInfoDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getPhoneNumber(),
-                user.getEmail(),
-                user.getPfpUrl(),
-                user.getRole().toString(),
-                user.getCreatedAt(),
-                user.isEnabled()
-        );
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(UserInfoDTO.from(user));
     }
 
     @PreAuthorize("@userSecurity.isSelf(authentication, #id)")

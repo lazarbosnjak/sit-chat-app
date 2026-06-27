@@ -71,6 +71,13 @@ public class AuthService {
     }
 
     public String login(@Valid LoginRequest dto) {
+        User user = userRepository.findByUsername(dto.username())
+                .orElseThrow(() -> ApiException.unauthorized("Username not found"));
+
+        if (!user.isEnabled()) {
+            throw ApiException.forbidden("Blocked users cannot log in");
+        }
+
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(dto.username(), dto.password());
         Authentication authentication = authenticationManager.authenticate(authToken);
@@ -78,8 +85,6 @@ public class AuthService {
 
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(dto.username());
-            User user = userRepository.findByUsername(dto.username())
-                    .orElseThrow(() -> ApiException.unauthorized("Username not found"));
             return jwtUtils.generateToken(userDetails, user.getId());
         } catch (UsernameNotFoundException ex) {
             throw ApiException.unauthorized(ex.getMessage());

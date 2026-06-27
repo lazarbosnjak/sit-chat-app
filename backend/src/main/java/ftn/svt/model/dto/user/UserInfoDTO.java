@@ -24,7 +24,13 @@ public record UserInfoDTO(
 
         Instant createdAt,
 
-        boolean enabled
+        boolean enabled,
+
+        String blockType,
+
+        String blockReason,
+
+        Instant blockedAt
 ) {
     public static UserInfoDTO from(User user) {
         return new UserInfoDTO(
@@ -37,7 +43,10 @@ public record UserInfoDTO(
                 user.getPfpUrl(),
                 user.getRole().toString(),
                 user.getCreatedAt(),
-                user.isEnabled()
+                user.isEnabled(),
+                user.getBlockType() != null ? user.getBlockType().toString() : null,
+                user.getBlockReason(),
+                user.getBlockedAt()
         );
     }
 }

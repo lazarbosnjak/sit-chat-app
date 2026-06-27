@@ -173,20 +173,76 @@
 
           <div>
             <p class="text-gray-500">Account status</p>
-            <label
-              for="adminUserEnabled"
-              class="mt-2 flex w-fit items-center gap-2 font-medium text-gray-800"
-            >
-              <input
-                id="adminUserEnabled"
-                type="checkbox"
-                [formField]="updateUserForm.enabled"
-                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-              Enabled
-            </label>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <span class="font-medium text-gray-800">
+                {{ updateUserModel().enabled ? 'Active' : 'Blocked' }}
+              </span>
+
+              @if (updateUserModel().enabled) {
+                <button
+                  type="button"
+                  (click)="openBlockingMenu()"
+                  class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700"
+                >
+                  Block user
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="unblockUser()"
+                  class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700"
+                >
+                  Unblock user
+                </button>
+              }
+            </div>
           </div>
         </div>
+
+        @if (blockingMenuOpen() || !updateUserModel().enabled) {
+          <div class="grid gap-5 rounded-lg border border-red-100 bg-red-50 p-4 md:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label for="adminUserBlockType" class="text-sm font-medium text-gray-700">
+                Block type
+              </label>
+              <select
+                id="adminUserBlockType"
+                [formField]="updateUserForm.blockType"
+                class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              >
+                <option value="TEMPORARY">Temporary</option>
+                <option value="PERMANENT">Permanent</option>
+              </select>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium text-gray-700">Blocked at</p>
+              <p class="mt-2 text-sm text-gray-800">
+                @if (user.blockedAt) {
+                  {{ user.blockedAt | date: 'dd.MM.yyyy. HH:mm' }}
+                } @else {
+                  Will be set when changes are saved
+                }
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-1 md:col-span-2">
+              <label for="adminUserBlockReason" class="text-sm font-medium text-gray-700">
+                Block reason
+              </label>
+              <textarea
+                id="adminUserBlockReason"
+                rows="3"
+                [formField]="updateUserForm.blockReason"
+                class="resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              ></textarea>
+            </div>
+          </div>
+        }
+
+        @if (updateError()) {
+          <p class="text-sm text-red-600">{{ updateError() }}</p>
+        }
 
         @if (updateUserEnabled()) {
           <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
