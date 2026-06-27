@@ -1,0 +1,55 @@
+<div>
+  <h1>Users</h1>
+
+  <data-table
+    [columns]="columns"
+    [rows]="users()"
+    [emptyMessage]="'No users found'"
+    [actionTemplate]="userActions"
+  />
+
+  <ng-template #userActions let-user>
+    <button
+      type="button"
+      class="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+      (click)="openUserModal(user)"
+    >
+      Edit
+    </button>
+  </ng-template>
+
+  @if (selectedUser(); as user) {
+    <app-modal title="Edit user" (close)="closeUserModal()">
+      <form class="space-y-3" (ngSubmit)="saveUser()">
+        <input
+          class="w-full rounded border px-3 py-2"
+          name="username"
+          [(ngModel)]="user.username"
+        />
+        <input
+          class="w-full rounded border px-3 py-2"
+          name="firstName"
+          [(ngModel)]="user.firstName"
+        />
+        <input
+          class="w-full rounded border px-3 py-2"
+          name="lastName"
+          [(ngModel)]="user.lastName"
+        />
+        <input class="w-full rounded border px-3 py-2" name="email" [(ngModel)]="user.email" />
+        <input
+          class="w-full rounded border px-3 py-2"
+          name="phoneNumber"
+          [(ngModel)]="user.phoneNumber"
+        />
+
+        <button
+          type="submit"
+          class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Save
+        </button>
+      </form>
+    </app-modal>
+  }
+</div>

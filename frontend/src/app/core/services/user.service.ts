@@ -36,4 +36,12 @@ export class UserService {
 
     return savedUser;
   }
+
+  getAllUsers() {
+    const user = this.getLoggedInUser();
+    if (user.role !== 'ADMIN') {
+      throw new Error('not admin');
+    }
+    return this.http.get<User[]>(`${env.apiUrl}/admin/users`);
+  }
 }

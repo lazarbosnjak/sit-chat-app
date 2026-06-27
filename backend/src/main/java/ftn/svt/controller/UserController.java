@@ -73,7 +73,7 @@ public class UserController {
         return ResponseEntity.ok(dto);
     }
 
-    @PreAuthorize("@userSecurity.isSelfOrAdmin(authentication, #id)")
+    @PreAuthorize("@userSecurity.isSelf(authentication, #id)")
     @PutMapping("/{id}")
     public ResponseEntity<?> updateById(
             @PathVariable UUID id,

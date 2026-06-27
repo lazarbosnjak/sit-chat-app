@@ -24,9 +24,11 @@ export const routes: Routes = [
   {
     path: 'chats/:id',
     component: ChatComponent,
+    canActivate: [authGuard],
   },
   {
     path: 'profile',
     component: ProfileComponent,
+    canActivate: [authGuard],
   },
 ];

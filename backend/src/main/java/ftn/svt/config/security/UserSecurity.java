@@ -15,6 +15,15 @@ public class UserSecurity {
     private final String ROLE_ADMIN = "ROLE_ADMIN";
     private final UserRepository userRepository;
 
+    public boolean isSelf(Authentication authentication, UUID userId) {
+        if (authentication == null || !authentication.isAuthenticated() || userId == null) {
+            return false;
+        }
+
+        return userRepository.findByUsername(authentication.getName())
+                .map(user -> user.getId().equals(userId))
+                .orElse(false);
+    }
     public boolean isSelfOrAdmin(Authentication authentication, UUID userId) {
         if (authentication == null || !authentication.isAuthenticated() || userId == null) {
             return false;

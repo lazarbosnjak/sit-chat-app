@@ -8,11 +8,12 @@ import { UserService } from '@core/services/user.service';
 import { environment as env } from '@environments/environment';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { Chat, User } from '@shared/types/api.types';
+import { LucideGavel, LucideHouse, LucideMessageCirclePlus } from '@lucide/angular';
 
 @Component({
   selector: 'app-sidebar',
   templateUrl: './sidebar.component.html',
-  imports: [ModalComponent, FormField],
+  imports: [ModalComponent, FormField, LucideHouse, LucideMessageCirclePlus, LucideGavel],
 })
 export class SidebarComponent {
   private readonly http = inject(HttpClient);
@@ -20,6 +21,7 @@ export class SidebarComponent {
   readonly userService = inject(UserService);
   readonly chatService = inject(ChatService);
   readonly authService = inject(AuthService);
+  readonly ROLE_ADMIN = 'ROLE_ADMIN';
 
   selectedChatId = input<string | null>(null);
 
@@ -101,15 +103,11 @@ export class SidebarComponent {
     this.currentUser.set(this.userService.getLoggedInUser());
   }
 
-  navigateToChat(chatId: string) {
-    this.router.navigate(['/chats', chatId]);
-  }
-
   isSelectedChat(chat: Chat): boolean {
     return chat.id === this.selectedChatId();
   }
 
-  navigateToProfile() {
-    this.router.navigate(['/profile']);
+  navigateTo(location: string) {
+    this.router.navigate([location]);
   }
 }
