@@ -1,17 +1,18 @@
 package ftn.svt.controller;
 
-import ftn.svt.exception.ApiException;
 import ftn.svt.model.User;
 import ftn.svt.model.dto.user.UpdateUserProfileRequest;
 import ftn.svt.model.dto.user.UserInfoDTO;
 import ftn.svt.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -25,14 +26,28 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<?> getAllFiltered(
-            @RequestParam() String search,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false) Boolean hasProfilePicture,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate lastActiveFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate lastActiveTo,
             Principal principal
     ) {
-        if (search.isBlank()) {
-            throw ApiException.badRequest("search must be at least 1 character long");
+        boolean hasCriteria = !search.isBlank()
+                || hasProfilePicture != null
+                || lastActiveFrom != null
+                || lastActiveTo != null;
+
+        if (!hasCriteria) {
+            return ResponseEntity.ok(List.of());
         }
 
-        Collection<User> users = userService.getAllFiltered(search, principal);
+        Collection<User> users = userService.getAllFiltered(
+                search,
+                hasProfilePicture,
+                lastActiveFrom,
+                lastActiveTo,
+                principal
+        );
         List<UserInfoDTO> dtos = users.stream().map(UserInfoDTO::from).toList();
         return ResponseEntity.ok(dtos);
     }

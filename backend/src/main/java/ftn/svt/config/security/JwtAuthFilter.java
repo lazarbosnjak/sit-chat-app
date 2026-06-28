@@ -1,5 +1,7 @@
 package ftn.svt.config.security;
 
+import ftn.svt.model.UserActivityType;
+import ftn.svt.service.UserActivityService;
 import ftn.svt.service.UserDetailsServiceImpl;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -26,6 +28,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtils jwtUtils;
     private final UserDetailsServiceImpl userDetailsService;
     private final AuthenticationEntryPoint authenticationEntryPoint;
+    private final UserActivityService userActivityService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -50,6 +53,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     );
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    userActivityService.recordActivity(userId, UserActivityType.AUTHENTICATED_REQUEST);
                 }
             } catch (JwtException | UsernameNotFoundException | IllegalArgumentException ex) {
                 SecurityContextHolder.clearContext();

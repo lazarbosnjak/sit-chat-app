@@ -5,6 +5,7 @@ import ftn.svt.exception.ApiException;
 import ftn.svt.model.RegistrationRequestForm;
 import ftn.svt.model.RegistrationRequestFormStatus;
 import ftn.svt.model.User;
+import ftn.svt.model.UserActivityType;
 import ftn.svt.model.dto.auth.LoginRequest;
 import ftn.svt.model.dto.auth.RegistrationRequest;
 import ftn.svt.repository.RegistrationRequestFormRepository;
@@ -29,6 +30,7 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final UserDetailsService userDetailsService;
     private final RegistrationRequestFormRepository formRepository;
+    private final UserActivityService userActivityService;
 
     public Map<String, String> register(RegistrationRequest dto) {
         if (!dto.password().trim().equals(dto.repeatedPassword().trim())) {
@@ -46,10 +48,7 @@ public class AuthService {
                 .lastName(dto.lastName())
                 .phoneNumber(dto.phoneNumber())
                 .email(dto.email())
-                .pfpUrl(dto.pfpUrl().isBlank()
-                        ? "https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg"
-                        : dto.pfpUrl()
-                )
+                .pfpUrl(resolveProfilePictureUrl(dto.pfpUrl()))
                 .status(RegistrationRequestFormStatus.IN_PROCESS)
                 .build();
 
@@ -82,9 +81,19 @@ public class AuthService {
 
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(dto.username());
-            return jwtUtils.generateToken(userDetails, user.getId());
+            String token = jwtUtils.generateToken(userDetails, user.getId());
+            userActivityService.recordActivity(user.getId(), UserActivityType.LOGIN);
+            return token;
         } catch (UsernameNotFoundException ex) {
             throw ApiException.unauthorized(ex.getMessage());
         }
+    }
+
+    private String resolveProfilePictureUrl(String pfpUrl) {
+        if (pfpUrl == null || pfpUrl.isBlank()) {
+            return User.DEFAULT_PROFILE_PICTURE_URL;
+        }
+
+        return pfpUrl.trim();
     }
 }

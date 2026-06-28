@@ -24,6 +24,8 @@ public record UserInfoDTO(
 
         Instant createdAt,
 
+        Instant lastActiveAt,
+
         boolean enabled,
 
         String blockType,
@@ -43,6 +45,7 @@ public record UserInfoDTO(
                 user.getPfpUrl(),
                 user.getRole().toString(),
                 user.getCreatedAt(),
+                user.getLastActiveAt(),
                 user.isEnabled(),
                 user.getBlockType() != null ? user.getBlockType().toString() : null,
                 user.getBlockReason(),

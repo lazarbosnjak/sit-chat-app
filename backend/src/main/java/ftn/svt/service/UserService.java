@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.UUID;
@@ -19,6 +21,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private static final Instant MIN_LAST_ACTIVE = Instant.parse("1970-01-01T00:00:00Z");
+    private static final Instant MAX_LAST_ACTIVE_EXCLUSIVE = Instant.parse("9999-12-31T00:00:00Z");
 
     private final UserRepository userRepository;
 
@@ -32,9 +36,38 @@ public class UserService {
                 .orElseThrow(() -> ApiException.notFound("User not found"));
     }
 
-    public Collection<User> getAllFiltered(String search, Principal principal) {
+    public Collection<User> getAllFiltered(
+            String search,
+            Boolean hasProfilePicture,
+            LocalDate lastActiveFrom,
+            LocalDate lastActiveTo,
+            Principal principal
+    ) {
+        if (lastActiveFrom != null && lastActiveTo != null && lastActiveFrom.isAfter(lastActiveTo)) {
+            throw ApiException.badRequest("lastActiveFrom must be before or equal to lastActiveTo");
+        }
+
         UUID principalUserId = findByUsername(principal.getName()).getId();
-        return userRepository.findAllFiltered(search, principalUserId);
+        String normalizedSearch = normalizeSearch(search);
+        boolean filterByLastActive = lastActiveFrom != null || lastActiveTo != null;
+        Instant lastActiveFromInstant = lastActiveFrom == null
+                ? MIN_LAST_ACTIVE
+                : startOfDay(lastActiveFrom);
+        Instant lastActiveBeforeInstant = lastActiveTo == null
+                ? MAX_LAST_ACTIVE_EXCLUSIVE
+                : startOfDay(lastActiveTo.plusDays(1));
+
+        return userRepository.findAllFiltered(
+                normalizedSearch != null,
+                normalizedSearch == null ? "" : normalizedSearch,
+                hasProfilePicture != null,
+                Boolean.TRUE.equals(hasProfilePicture),
+                filterByLastActive,
+                lastActiveFromInstant,
+                lastActiveBeforeInstant,
+                User.DEFAULT_PROFILE_PICTURE_URL,
+                principalUserId
+        );
     }
 
     @Transactional
@@ -144,5 +177,21 @@ public class UserService {
 
     public Collection<User> getAll() {
         return userRepository.findAll();
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+
+        return search.trim();
+    }
+
+    private Instant startOfDay(LocalDate date) {
+        if (date == null) {
+            return null;
+        }
+
+        return date.atStartOfDay(ZoneOffset.UTC).toInstant();
     }
 }

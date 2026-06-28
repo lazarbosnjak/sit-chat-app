@@ -1,5 +1,6 @@
 package ftn.svt.config.security;
 
+import ftn.svt.service.UserActivityService;
 import ftn.svt.service.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +38,8 @@ public class WebSecurityConfig {
             HttpSecurity http,
             UserDetailsServiceImpl userDetailsService,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            JwtAccessDeniedHandler jwtAccessDeniedHandler
+            JwtAccessDeniedHandler jwtAccessDeniedHandler,
+            UserActivityService userActivityService
     ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -56,7 +58,7 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
-                        new JwtAuthFilter(jwtUtils, userDetailsService, jwtAuthenticationEntryPoint),
+                        new JwtAuthFilter(jwtUtils, userDetailsService, jwtAuthenticationEntryPoint, userActivityService),
                         UsernamePasswordAuthenticationFilter.class
                 );
 

@@ -37,6 +37,7 @@ export interface User {
   pfpUrl: string;
   role: 'ADMIN' | 'USER';
   createdAt: Date;
+  lastActiveAt?: Date | null;
   enabled: boolean;
   blockType?: 'TEMPORARY' | 'PERMANENT';
   blockReason?: string;

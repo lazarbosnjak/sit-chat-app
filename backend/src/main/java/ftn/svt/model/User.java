@@ -19,6 +19,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "users")
 public class User {
+    public static final String DEFAULT_PROFILE_PICTURE_URL =
+            "https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg";
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -58,6 +60,8 @@ public class User {
 
     @CreatedDate
     private Instant createdAt;
+
+    private Instant lastActiveAt;
 
     public String getFullName() {
         return firstName + " " + lastName;

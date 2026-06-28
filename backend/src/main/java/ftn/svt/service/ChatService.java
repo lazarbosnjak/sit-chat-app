@@ -26,6 +26,7 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final MessageReceiptRepository messageReceiptRepository;
     private final ChatMemberRepository chatMemberRepository;
+    private final UserActivityService userActivityService;
 
     @Transactional
     public Chat create(ChatCreateRequest dto, Principal principal) {
@@ -79,7 +80,10 @@ public class ChatService {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         savedChat.setMembers(members);
-        return chatRepository.save(savedChat);
+        Chat createdChat = chatRepository.save(savedChat);
+        userActivityService.recordActivity(initiator.getId(), UserActivityType.CHAT_CREATED);
+
+        return createdChat;
 
     }
 
@@ -158,6 +162,7 @@ public class ChatService {
         });
 
         messageReceiptRepository.saveAll(unreadReceipts);
+        userActivityService.recordActivity(user.getId(), UserActivityType.MESSAGE_READ);
 
         return getStatusUpdatesForMessages(unreadReceipts.stream()
                 .map(receipt -> receipt.getMessage().getId())
@@ -210,6 +215,7 @@ public class ChatService {
                 .toList();
 
         messageReceiptRepository.saveAll(receipts);
+        userActivityService.recordActivity(sender.getId(), UserActivityType.MESSAGE_SENT);
 
         return MessageResponse.from(savedMessage, getDeliveryStatus(receipts));
     }

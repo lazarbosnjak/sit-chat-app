@@ -58,7 +58,7 @@ public class StartupRunner implements CommandLineRunner {
                 .lastName("Brankovic")
                 .phoneNumber("+381611111111")
                 .email("branko@brankovic.com")
-                .pfpUrl("https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg")
+                .pfpUrl(User.DEFAULT_PROFILE_PICTURE_URL)
                 .enabled(true)
                 .createdAt(null)
                 .build();
@@ -72,7 +72,7 @@ public class StartupRunner implements CommandLineRunner {
                 .lastName("Lukic")
                 .phoneNumber("+381622222222")
                 .email("luka@lukic.com")
-                .pfpUrl("https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg")
+                .pfpUrl(User.DEFAULT_PROFILE_PICTURE_URL)
                 .enabled(true)
                 .createdAt(null)
                 .build();
@@ -86,7 +86,7 @@ public class StartupRunner implements CommandLineRunner {
                 .lastName("Jovanovic")
                 .phoneNumber("+381633333333")
                 .email("jovana@jovanovic.com")
-                .pfpUrl("https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg")
+                .pfpUrl(User.DEFAULT_PROFILE_PICTURE_URL)
                 .enabled(true)
                 .createdAt(null)
                 .build();
@@ -100,7 +100,7 @@ public class StartupRunner implements CommandLineRunner {
                 .lastName("Milanovic")
                 .phoneNumber("+381644444444")
                 .email("milan@milanovic.com")
-                .pfpUrl("https://static.vecteezy.com/system/resources/thumbnails/003/337/584/small/default-avatar-photo-placeholder-profile-icon-vector.jpg")
+                .pfpUrl(User.DEFAULT_PROFILE_PICTURE_URL)
                 .enabled(false)
                 .blockType(UserBlockType.TEMPORARY)
                 .blockReason("Seed account is blocked for moderation review")

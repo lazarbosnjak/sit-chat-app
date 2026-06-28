@@ -10,6 +10,22 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
 import { Chat, User } from '@shared/types/api.types';
 import { LucideGavel, LucideHouse, LucideMessageCirclePlus } from '@lucide/angular';
 
+type ProfilePictureFilter = 'ANY' | 'SET' | 'NOT_SET';
+
+interface UserSearchModel {
+  content: string;
+  lastActiveFrom: string;
+  lastActiveTo: string;
+  profilePicture: ProfilePictureFilter;
+}
+
+const EMPTY_SEARCH_MODEL: UserSearchModel = {
+  content: '',
+  lastActiveFrom: '',
+  lastActiveTo: '',
+  profilePicture: 'ANY',
+};
+
 @Component({
   selector: 'app-sidebar',
   templateUrl: './sidebar.component.html',
@@ -30,33 +46,31 @@ export class SidebarComponent {
   chats = this.chatService.chats;
 
   // SEARCH
-  searchModel = signal({
-    content: '',
-  });
+  searchModel = signal<UserSearchModel>({ ...EMPTY_SEARCH_MODEL });
   searchForm = form(this.searchModel);
   searchResults = signal<User[]>([]);
   isSearching = signal(false);
 
   constructor() {
     effect((onCleanup) => {
-      const search = this.searchModel().content;
+      const params = this.buildSearchParams(this.searchModel());
       const DEBOUNCE_TIMER = 300;
-      this.isSearching.set(true);
 
-      if (!search) {
+      if (Object.keys(params).length === 0) {
         this.searchResults.set([]);
         this.isSearching.set(false);
         return;
       }
 
+      this.isSearching.set(true);
+      let subscription: { unsubscribe: () => void } | null = null;
+
       const timeoutId = setTimeout(() => {
         this.isSearching.set(true);
 
-        const subscribtion = this.http
+        subscription = this.http
           .get<User[]>(`${env.apiUrl}/users`, {
-            params: {
-              search: search,
-            },
+            params,
           })
           .subscribe({
             next: (users) => {
@@ -69,10 +83,12 @@ export class SidebarComponent {
               console.error(err);
             },
           });
-        onCleanup(() => subscribtion.unsubscribe());
       }, DEBOUNCE_TIMER);
 
-      onCleanup(() => clearTimeout(timeoutId));
+      onCleanup(() => {
+        clearTimeout(timeoutId);
+        subscription?.unsubscribe();
+      });
     });
   }
 
@@ -90,7 +106,7 @@ export class SidebarComponent {
     try {
       const chat = await this.chatService.createDirectChat(userId);
       this.chats.update((old) => [...old, chat]);
-      this.searchModel.set({ content: '' });
+      this.searchModel.set({ ...EMPTY_SEARCH_MODEL });
       this.searchResults.set([]);
       this.closeNewChatModal();
     } catch (err) {
@@ -109,5 +125,46 @@ export class SidebarComponent {
 
   navigateTo(location: string) {
     this.router.navigate([location]);
+  }
+
+  hasSearchCriteria(): boolean {
+    return Object.keys(this.buildSearchParams(this.searchModel())).length > 0;
+  }
+
+  formatLastActive(lastActiveAt: Date | string | null | undefined): string {
+    if (!lastActiveAt) {
+      return 'Never active';
+    }
+
+    const date = new Date(lastActiveAt);
+
+    if (Number.isNaN(date.getTime())) {
+      return 'Last activity unavailable';
+    }
+
+    return `Last active ${date.toLocaleDateString()}`;
+  }
+
+  private buildSearchParams(search: UserSearchModel): Record<string, string> {
+    const params: Record<string, string> = {};
+    const content = search.content.trim();
+
+    if (content) {
+      params['search'] = content;
+    }
+    if (search.lastActiveFrom) {
+      params['lastActiveFrom'] = search.lastActiveFrom;
+    }
+    if (search.lastActiveTo) {
+      params['lastActiveTo'] = search.lastActiveTo;
+    }
+    if (search.profilePicture === 'SET') {
+      params['hasProfilePicture'] = 'true';
+    }
+    if (search.profilePicture === 'NOT_SET') {
+      params['hasProfilePicture'] = 'false';
+    }
+
+    return params;
   }
 }

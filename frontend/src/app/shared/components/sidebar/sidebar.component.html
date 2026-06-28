@@ -122,11 +122,43 @@
       [formField]="searchForm.content"
     />
 
+    <div class="mt-3 grid grid-cols-2 gap-3">
+      <label class="grid gap-1 text-xs font-medium text-gray-600">
+        Active from
+        <input
+          type="date"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+          [formField]="searchForm.lastActiveFrom"
+        />
+      </label>
+
+      <label class="grid gap-1 text-xs font-medium text-gray-600">
+        Active to
+        <input
+          type="date"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+          [formField]="searchForm.lastActiveTo"
+        />
+      </label>
+    </div>
+
+    <label class="mt-3 grid gap-1 text-xs font-medium text-gray-600">
+      Profile photo
+      <select
+        class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+        [formField]="searchForm.profilePicture"
+      >
+        <option value="ANY">Any</option>
+        <option value="SET">Set</option>
+        <option value="NOT_SET">Not set</option>
+      </select>
+    </label>
+
     <div class="mt-4 space-y-2">
       @if (isSearching()) {
         <p class="text-m text-gray-500">Searching...</p>
       }
-      @if (searchModel().content.length > 0 && searchResults().length === 0 && !isSearching()) {
+      @if (hasSearchCriteria() && searchResults().length === 0 && !isSearching()) {
         <p class="text-m text-gray-500 italic text-center">No users found matching your search.</p>
       }
       @for (user of searchResults(); track user.id) {
@@ -146,6 +178,7 @@
               {{ user.firstName + ' ' + user.lastName }} ({{ user.phoneNumber }})
             </p>
             <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+            <p class="truncate text-xs text-gray-400">{{ formatLastActive(user.lastActiveAt) }}</p>
           </div>
         </button>
       }

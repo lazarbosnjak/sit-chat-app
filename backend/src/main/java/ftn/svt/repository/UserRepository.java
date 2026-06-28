@@ -15,14 +15,32 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsername(String username);
 
     @Query("""
-                select distinct u
+                select u
                 from User u
                 where u.id <> :principalUserId
                     and u.enabled
                     and (
-                        upper(concat(u.firstName,' ',u.lastName)) like concat('%', upper(?1), '%')
-                        or upper(u.username) like concat('%', upper(?1), '%')
-                        or u.phoneNumber like concat('%', upper(?1), '%')
+                        :filterBySearch = false
+                        or upper(concat(u.firstName,' ',u.lastName)) like concat('%', upper(:searchStr), '%')
+                        or upper(u.firstName) like concat('%', upper(:searchStr), '%')
+                        or upper(u.lastName) like concat('%', upper(:searchStr), '%')
+                        or upper(u.username) like concat('%', upper(:searchStr), '%')
+                        or u.phoneNumber like concat('%', :searchStr, '%')
+                    )
+                    and (
+                        :filterByProfilePicture = false
+                        or (:hasProfilePicture = true
+                            and u.pfpUrl is not null
+                            and u.pfpUrl <> ''
+                            and u.pfpUrl <> :defaultProfilePictureUrl)
+                        or (:hasProfilePicture = false
+                            and (u.pfpUrl is null
+                                or u.pfpUrl = ''
+                                or u.pfpUrl = :defaultProfilePictureUrl))
+                    )
+                    and (
+                        :filterByLastActive = false
+                        or (u.lastActiveAt >= :lastActiveFrom and u.lastActiveAt < :lastActiveBefore)
                     )
                     and not exists (
                         select 1
@@ -33,8 +51,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                             and m1.user.id = :principalUserId
                             and m2.user.id = u.id
                     )
+                order by
+                    case when u.lastActiveAt is null then 1 else 0 end,
+                    u.lastActiveAt desc,
+                    u.firstName,
+                    u.lastName,
+                    u.username
             """)
     Collection<User> findAllFiltered(
+            @Param("filterBySearch") boolean filterBySearch,
             @Param("searchStr") String search,
+            @Param("filterByProfilePicture") boolean filterByProfilePicture,
+            @Param("hasProfilePicture") boolean hasProfilePicture,
+            @Param("filterByLastActive") boolean filterByLastActive,
+            @Param("lastActiveFrom") java.time.Instant lastActiveFrom,
+            @Param("lastActiveBefore") java.time.Instant lastActiveBefore,
+            @Param("defaultProfilePictureUrl") String defaultProfilePictureUrl,
             @Param("principalUserId") UUID principalUserId);
 }
