@@ -4,12 +4,33 @@
   <main class="flex min-w-0 flex-1 flex-col">
     <!-- Chat header -->
     <header class="flex items-center gap-3 border-b border-gray-200 bg-white p-4">
-      <img [src]="chatImage()" alt="Profile picture" class="h-10 w-10 rounded-full object-cover" />
+      @if (getDirectRecipient(); as recipient) {
+        <button
+          type="button"
+          class="shrink-0 rounded-full transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          [title]="recipient.fullName"
+          [attr.aria-label]="recipient.fullName"
+          (click)="openUserProfile(recipient.userId)"
+        >
+          <img
+            [src]="chatImage()"
+            alt="Profile picture"
+            class="h-10 w-10 rounded-full object-cover"
+          />
+        </button>
 
-      <div>
-        <h2 class="font-semibold">{{ chatTitle() }}</h2>
-        <p class="text-sm text-gray-500">Online</p>
-      </div>
+        <button type="button" class="min-w-0 text-left" (click)="openUserProfile(recipient.userId)">
+          <h2 class="truncate font-semibold">{{ chatTitle() }}</h2>
+          <p class="truncate text-sm text-gray-500">{{ recipient.status || 'No status set' }}</p>
+        </button>
+      } @else {
+        <img [src]="chatImage()" alt="Chat image" class="h-10 w-10 rounded-full object-cover" />
+
+        <div class="min-w-0">
+          <h2 class="truncate font-semibold">{{ chatTitle() }}</h2>
+          <p class="text-sm text-gray-500">Group chat</p>
+        </div>
+      }
     </header>
 
     <!-- Messages area -->
@@ -27,11 +48,19 @@
               [class.flex-row-reverse]="isOwnMessage(message)"
             >
               <!-- avatar -->
-              <img
-                [src]="message.sender.pfpUrl"
-                alt="Profile picture"
-                class="h-9 w-9 shrink-0 rounded-full object-cover"
-              />
+              <button
+                type="button"
+                class="shrink-0 rounded-full transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                [title]="message.sender.fullName"
+                [attr.aria-label]="message.sender.fullName"
+                (click)="openUserProfile(message.sender.userId)"
+              >
+                <img
+                  [src]="message.sender.pfpUrl"
+                  alt="Profile picture"
+                  class="h-9 w-9 rounded-full object-cover"
+                />
+              </button>
 
               <div
                 class="flex max-w-[82%] flex-col"
@@ -52,13 +81,15 @@
                     [class.bg-white]="!isOwnMessage(message)"
                     [class.text-gray-900]="!isOwnMessage(message)"
                   >
-                    <div
-                      class="mb-1 text-left text-xs font-bold"
+                    <button
+                      type="button"
+                      class="mb-1 block max-w-full truncate text-left text-xs font-bold"
                       [class.text-blue-100]="isOwnMessage(message)"
                       [class.text-gray-400]="!isOwnMessage(message)"
+                      (click)="openUserProfile(message.sender.userId)"
                     >
                       {{ message.sender.fullName }}
-                    </div>
+                    </button>
 
                     @if (getReplyReference(message); as reply) {
                       <div
@@ -313,5 +344,56 @@
         </button>
       }
     </div>
+  </app-modal>
+}
+
+@if (isUserProfileModalOpen()) {
+  <app-modal title="User profile" (close)="closeUserProfileModal()">
+    @if (userProfileError()) {
+      <p class="py-6 text-center text-sm text-red-600">{{ userProfileError() }}</p>
+    } @else if (selectedProfileUser(); as profileUser) {
+      <div class="flex flex-col gap-5">
+        <div class="flex items-center gap-4">
+          <img
+            [src]="profileUser.pfpUrl"
+            alt="Profile picture"
+            class="h-20 w-20 shrink-0 rounded-full object-cover"
+          />
+
+          <div class="min-w-0">
+            <h2 class="truncate text-xl font-semibold">
+              {{ profileUser.firstName }} {{ profileUser.lastName }}
+            </h2>
+            <p class="truncate text-sm text-gray-500">@{{ profileUser.username }}</p>
+            <p class="mt-2 truncate text-sm font-medium text-blue-700">
+              {{ profileUser.status || 'No status set' }}
+            </p>
+          </div>
+        </div>
+
+        <div class="grid gap-4 text-sm">
+          <div>
+            <p class="text-gray-500">About me</p>
+            <p class="mt-1 whitespace-pre-wrap text-gray-800">
+              {{ profileUser.aboutMe || 'No about me set.' }}
+            </p>
+          </div>
+
+          <div class="grid gap-3 border-t border-gray-100 pt-4 sm:grid-cols-2">
+            <div>
+              <p class="text-gray-500">E-mail</p>
+              <p class="truncate font-medium text-gray-800">{{ profileUser.email }}</p>
+            </div>
+
+            <div>
+              <p class="text-gray-500">Phone number</p>
+              <p class="truncate font-medium text-gray-800">{{ profileUser.phoneNumber }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <p class="py-6 text-center text-sm text-gray-500">Loading profile...</p>
+    }
   </app-modal>
 }

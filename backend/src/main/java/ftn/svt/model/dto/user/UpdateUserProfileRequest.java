@@ -19,6 +19,12 @@ public record UpdateUserProfileRequest(
         String email,
 
         @URL
-        String pfpUrl
+        String pfpUrl,
+
+        @Size(max = 80)
+        String status,
+
+        @Size(max = 500)
+        String aboutMe
 ) {
 }

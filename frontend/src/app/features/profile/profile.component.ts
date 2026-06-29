@@ -19,6 +19,8 @@ interface UpdateProfileModel {
   email: string;
   phoneNumber: string;
   pfpUrl: string;
+  status: string;
+  aboutMe: string;
 }
 
 @Component({
@@ -37,6 +39,8 @@ export class ProfileComponent {
     email: '',
     phoneNumber: '',
     pfpUrl: '',
+    status: '',
+    aboutMe: '',
   });
 
   updateProfileForm = form(
@@ -54,6 +58,12 @@ export class ProfileComponent {
 
       maxLength(schemaPath.phoneNumber, 15, {
         message: 'Phone number cant be longer than 15 characters',
+      });
+      maxLength(schemaPath.status, 80, {
+        message: 'Status cant be longer than 80 characters',
+      });
+      maxLength(schemaPath.aboutMe, 500, {
+        message: 'About me cant be longer than 500 characters',
       });
     },
     {
@@ -100,6 +110,8 @@ export class ProfileComponent {
       email: user.email,
       phoneNumber: user.phoneNumber,
       pfpUrl: user.pfpUrl,
+      status: user.status ?? '',
+      aboutMe: user.aboutMe ?? '',
     });
   }
 

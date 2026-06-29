@@ -96,6 +96,16 @@ public class UserService {
             user.setPfpUrl(dto.pfpUrl());
             changes++;
         }
+        String status = normalizeOptionalText(dto.status());
+        if (!Objects.equals(user.getStatus(), status)) {
+            user.setStatus(status);
+            changes++;
+        }
+        String aboutMe = normalizeOptionalText(dto.aboutMe());
+        if (!Objects.equals(user.getAboutMe(), aboutMe)) {
+            user.setAboutMe(aboutMe);
+            changes++;
+        }
         if (user.isEnabled() != dto.enabled()) {
             user.setEnabled(dto.enabled());
             changes++;
@@ -167,6 +177,16 @@ public class UserService {
             user.setPfpUrl(dto.pfpUrl());
             changes++;
         }
+        String status = normalizeOptionalText(dto.status());
+        if (!Objects.equals(user.getStatus(), status)) {
+            user.setStatus(status);
+            changes++;
+        }
+        String aboutMe = normalizeOptionalText(dto.aboutMe());
+        if (!Objects.equals(user.getAboutMe(), aboutMe)) {
+            user.setAboutMe(aboutMe);
+            changes++;
+        }
 
         if (changes == 0) {
            return user;
@@ -185,6 +205,14 @@ public class UserService {
         }
 
         return search.trim();
+    }
+
+    private String normalizeOptionalText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        return text.trim();
     }
 
     private Instant startOfDay(LocalDate date) {

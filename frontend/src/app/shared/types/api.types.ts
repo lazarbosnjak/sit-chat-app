@@ -35,6 +35,8 @@ export interface User {
   phoneNumber: string;
   email: string;
   pfpUrl: string;
+  status?: string | null;
+  aboutMe?: string | null;
   role: 'ADMIN' | 'USER';
   createdAt: Date;
   lastActiveAt?: Date | null;
@@ -62,6 +64,8 @@ export interface ChatMember {
   lastName: string;
   fullName: string;
   pfpUrl: string;
+  status?: string | null;
+  aboutMe?: string | null;
   role: 'ADMIN' | 'MEMBER';
 }
 

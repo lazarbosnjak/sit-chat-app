@@ -115,6 +115,38 @@
           />
         </div>
 
+        <div class="grid gap-5 md:grid-cols-2">
+          <div class="flex flex-col gap-1">
+            <label for="status" class="text-sm font-medium text-gray-700">Status</label>
+            <input
+              id="status"
+              type="text"
+              [formField]="updateProfileForm.status"
+              [class.border-red-500]="showError(updateProfileForm.status())"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+
+            @if (showError(updateProfileForm.status())) {
+              <p class="text-xs text-red-600">{{ firstError(updateProfileForm.status()) }}</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label for="aboutMe" class="text-sm font-medium text-gray-700">About me</label>
+            <textarea
+              id="aboutMe"
+              rows="3"
+              [formField]="updateProfileForm.aboutMe"
+              [class.border-red-500]="showError(updateProfileForm.aboutMe())"
+              class="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            ></textarea>
+
+            @if (showError(updateProfileForm.aboutMe())) {
+              <p class="text-xs text-red-600">{{ firstError(updateProfileForm.aboutMe()) }}</p>
+            }
+          </div>
+        </div>
+
         <div class="grid gap-4 border-t border-gray-100 pt-5 text-sm md:grid-cols-2">
           <div>
             <p class="text-gray-500">User ID</p>

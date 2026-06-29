@@ -49,6 +49,12 @@ public class User {
 
     private String pfpUrl;
 
+    @Column(length = 80)
+    private String status;
+
+    @Column(length = 500)
+    private String aboutMe;
+
     private boolean enabled;
 
     @Enumerated(EnumType.STRING)

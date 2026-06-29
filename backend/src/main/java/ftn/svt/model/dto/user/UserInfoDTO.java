@@ -20,6 +20,10 @@ public record UserInfoDTO(
 
         String pfpUrl,
 
+        String status,
+
+        String aboutMe,
+
         String role,
 
         Instant createdAt,
@@ -43,6 +47,8 @@ public record UserInfoDTO(
                 user.getPhoneNumber(),
                 user.getEmail(),
                 user.getPfpUrl(),
+                user.getStatus(),
+                user.getAboutMe(),
                 user.getRole().toString(),
                 user.getCreatedAt(),
                 user.getLastActiveAt(),

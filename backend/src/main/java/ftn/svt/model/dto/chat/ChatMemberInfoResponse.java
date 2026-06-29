@@ -13,6 +13,8 @@ public record ChatMemberInfoResponse(
         String lastName,
         String fullName,
         String pfpUrl,
+        String status,
+        String aboutMe,
         ChatRole role
 ) {
     public static ChatMemberInfoResponse from(ChatMember member) {
@@ -24,10 +26,11 @@ public record ChatMemberInfoResponse(
                 member.getUser().getLastName(),
                 member.getUser().getFullName(),
                 member.getUser().getPfpUrl(),
+                member.getUser().getStatus(),
+                member.getUser().getAboutMe(),
                 member.getRole()
         );
     }
 }
-
 
 

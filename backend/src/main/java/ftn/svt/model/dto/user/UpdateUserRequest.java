@@ -23,6 +23,12 @@ public record UpdateUserRequest(
         @URL
         String pfpUrl,
 
+        @Size(max = 80)
+        String status,
+
+        @Size(max = 500)
+        String aboutMe,
+
         boolean enabled,
 
         UserRole role,

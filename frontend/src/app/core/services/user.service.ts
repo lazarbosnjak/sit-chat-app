@@ -37,6 +37,10 @@ export class UserService {
     return savedUser;
   }
 
+  getUserById(userId: string) {
+    return this.http.get<User>(`${env.apiUrl}/users/${userId}`);
+  }
+
   getAllUsers() {
     const user = this.getLoggedInUser();
     if (user.role !== 'ADMIN') {

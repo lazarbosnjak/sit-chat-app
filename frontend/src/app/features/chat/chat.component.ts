@@ -21,6 +21,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
 import { SidebarComponent } from '@shared/components/sidebar/sidebar.component';
 import {
   Chat,
+  ChatMember,
   ChatEvent,
   Message,
   MessageDeliveryStatus,
@@ -97,6 +98,9 @@ export class ChatComponent {
   replyingTo = signal<Message | null>(null);
   forwardingMessage = signal<Message | null>(null);
   isForwardModalOpen = signal(false);
+  isUserProfileModalOpen = signal(false);
+  selectedProfileUser = signal<User | null>(null);
+  userProfileError = signal<string | null>(null);
 
   readonly reactionOptions: { type: MessageReactionType; emoji: string; label: string }[] = [
     { type: 'HEART', emoji: '❤', label: 'Heart' },
@@ -185,6 +189,41 @@ export class ChatComponent {
       this.chatTitle.set(chat.name ?? 'Group Chat');
       this.chatImage.set(chat.imageUrl ?? '');
     }
+  }
+
+  getDirectRecipient(): ChatMember | null {
+    const chat = this.chat();
+
+    if (!chat || chat.type !== 'DIRECT') {
+      return null;
+    }
+
+    return chat.members.find((member) => member.userId !== this.currentUser()?.id) ?? null;
+  }
+
+  openUserProfile(userId: string): void {
+    this.isUserProfileModalOpen.set(true);
+    this.selectedProfileUser.set(null);
+    this.userProfileError.set(null);
+
+    this.userService
+      .getUserById(userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (user) => {
+          this.selectedProfileUser.set(user);
+        },
+        error: (err) => {
+          console.error('Could not load user profile', err);
+          this.userProfileError.set('Could not load user profile.');
+        },
+      });
+  }
+
+  closeUserProfileModal(): void {
+    this.isUserProfileModalOpen.set(false);
+    this.selectedProfileUser.set(null);
+    this.userProfileError.set(null);
   }
 
   isOwnMessage(message: Message): boolean {
