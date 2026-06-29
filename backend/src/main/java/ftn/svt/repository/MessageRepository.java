@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, UUID> {
-    List<Message> findAllByChatId(UUID chatId);
+    List<Message> findAllByChatIdOrderByCreatedAtAsc(UUID chatId);
 
     long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Instant rangeStart,

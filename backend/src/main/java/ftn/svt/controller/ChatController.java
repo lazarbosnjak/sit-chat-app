@@ -66,9 +66,10 @@ public class ChatController {
     @PreAuthorize("@chatSecurity.canAccessChat(authentication, #chatId)")
     @GetMapping({"/{chatId}/messages"})
     public ResponseEntity<?> getMessagesByChatId(
-            @PathVariable UUID chatId
+            @PathVariable UUID chatId,
+            Principal principal
     ) {
-        return ResponseEntity.ok(chatService.getMessagesByChatId(chatId));
+        return ResponseEntity.ok(chatService.getMessagesByChatId(chatId, principal.getName()));
     }
 
     @PreAuthorize("@chatSecurity.canAccessChat(authentication, #chatId)")

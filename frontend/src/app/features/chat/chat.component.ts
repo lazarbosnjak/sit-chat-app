@@ -17,6 +17,7 @@ import { AuthService } from '@core/services/auth.service';
 import { ChatService } from '@core/services/chat.service';
 import { StompService } from '@core/services/stomp.service';
 import { UserService } from '@core/services/user.service';
+import { ModalComponent } from '@shared/components/modal/modal.component';
 import { SidebarComponent } from '@shared/components/sidebar/sidebar.component';
 import {
   Chat,
@@ -24,20 +25,33 @@ import {
   Message,
   MessageDeliveryStatus,
   MessageReceipt,
+  MessageReactionSummary,
+  MessageReactionType,
+  MessageReference,
   MessageStatus,
   User,
 } from '@shared/types/api.types';
+import { LucideForward, LucideReply, LucideSend, LucideX } from '@lucide/angular';
 import { StompSubscription } from '@stomp/stompjs';
 import { forkJoin, switchMap, tap } from 'rxjs';
 
 @Component({
   templateUrl: './chat.component.html',
-  imports: [SidebarComponent, FormRoot, FormField],
+  imports: [
+    SidebarComponent,
+    ModalComponent,
+    FormRoot,
+    FormField,
+    LucideForward,
+    LucideReply,
+    LucideSend,
+    LucideX,
+  ],
 })
 export class ChatComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly chatService = inject(ChatService);
+  readonly chatService = inject(ChatService);
   private readonly userService = inject(UserService);
   private readonly authService = inject(AuthService);
   private readonly stompService = inject(StompService);
@@ -79,6 +93,16 @@ export class ChatComponent {
   selectedChatId = signal<string | null>(null);
   messages = signal<Message[]>([]);
   messageReceipts = signal<MessageReceipt[]>([]);
+  replyingTo = signal<Message | null>(null);
+  forwardingMessage = signal<Message | null>(null);
+  isForwardModalOpen = signal(false);
+
+  readonly reactionOptions: { type: MessageReactionType; emoji: string; label: string }[] = [
+    { type: 'HEART', emoji: '❤', label: 'Heart' },
+    { type: 'LIKE', emoji: '👍', label: 'Like' },
+    { type: 'LAUGH', emoji: '😂', label: 'Laugh' },
+    { type: 'CRY', emoji: '😢', label: 'Cry' },
+  ];
 
   messageModel = signal({
     content: '',
@@ -113,8 +137,10 @@ export class ChatComponent {
         tap(({ chat, messages, messageReceipts }) => {
           this.chat.set(chat);
           this.selectedChatId.set(chat.id);
-          this.messages.set(messages);
+          this.messages.set(messages.map((message) => this.normalizeMessage(message)));
           this.messageReceipts.set(messageReceipts);
+          this.cancelReply();
+          this.closeForwardModal();
 
           this.setupInfo(chat);
         }),
@@ -151,6 +177,12 @@ export class ChatComponent {
       const recipient = chat.members.filter((m) => m.userId !== this.currentUser()?.id)[0];
       this.chatTitle.set(recipient.fullName);
       this.chatImage.set(recipient.pfpUrl);
+      return;
+    }
+
+    if (chat.type === 'GROUP') {
+      this.chatTitle.set(chat.name ?? 'Group Chat');
+      this.chatImage.set(chat.imageUrl ?? '');
     }
   }
 
@@ -219,6 +251,11 @@ export class ChatComponent {
 
     if (event.type === 'MESSAGE_STATUSES_UPDATED') {
       this.handleMessageStatusesUpdated(event.messageStatuses ?? []);
+      return;
+    }
+
+    if (event.type === 'MESSAGE_REACTIONS_UPDATED') {
+      this.handleMessageReactionsUpdated(event.messageId, event.messageReactions ?? []);
     }
   }
 
@@ -236,15 +273,16 @@ export class ChatComponent {
       return;
     }
 
-    const messageAlreadyExist = this.messages().some((message) => message.id === createdMessage.id);
+    const normalizedMessage = this.normalizeMessage(createdMessage);
+    const messageAlreadyExist = this.messages().some((message) => message.id === normalizedMessage.id);
 
     if (messageAlreadyExist) {
       return;
     }
 
-    this.messages.update((old) => [...old, createdMessage]);
+    this.messages.update((old) => [...old, normalizedMessage]);
 
-    if (!this.isOwnMessage(createdMessage)) {
+    if (!this.isOwnMessage(normalizedMessage)) {
       this.markCurrentChatAsRead();
     }
   }
@@ -267,9 +305,23 @@ export class ChatComponent {
     );
   }
 
+  private handleMessageReactionsUpdated(
+    messageId: string | undefined,
+    reactions: MessageReactionSummary[],
+  ): void {
+    if (!messageId) {
+      return;
+    }
+
+    this.messages.update((messages) =>
+      messages.map((message) => (message.id === messageId ? { ...message, reactions } : message)),
+    );
+  }
+
   sendMessage(): void {
     const chatId = this.selectedChatId();
     const content = this.messageModel().content.trim();
+    const replyToMessageId = this.replyingTo()?.id;
 
     if (!chatId || !content) {
       return;
@@ -278,11 +330,82 @@ export class ChatComponent {
     this.stompService.publishJson('/app/chat.send', {
       chatId: chatId,
       content: content,
+      replyToMessageId,
     });
 
     this.messageModel.set({
       content: '',
     });
+    this.cancelReply();
+  }
+
+  startReply(message: Message): void {
+    this.replyingTo.set(message);
+  }
+
+  cancelReply(): void {
+    this.replyingTo.set(null);
+  }
+
+  openForwardModal(message: Message): void {
+    this.forwardingMessage.set(message);
+    this.isForwardModalOpen.set(true);
+  }
+
+  closeForwardModal(): void {
+    this.isForwardModalOpen.set(false);
+    this.forwardingMessage.set(null);
+  }
+
+  forwardMessage(targetChat: Chat): void {
+    const message = this.forwardingMessage();
+
+    if (!message) {
+      return;
+    }
+
+    this.stompService.publishJson('/app/chat.send', {
+      chatId: targetChat.id,
+      content: message.content,
+      forwardedFromMessageId: message.id,
+    });
+
+    this.closeForwardModal();
+  }
+
+  reactToMessage(message: Message, type: MessageReactionType): void {
+    this.stompService.publishJson('/app/chat.react', {
+      messageId: message.id,
+      type,
+    });
+  }
+
+  getForwardableChats(): Chat[] {
+    const selectedChatId = this.selectedChatId();
+
+    return this.chatService.chats().filter((chat) => chat.id !== selectedChatId);
+  }
+
+  getReplyReference(message: Message): MessageReference | null {
+    return message.replyTo ?? this.findMessageReference(message.replyToMessageId);
+  }
+
+  getForwardedReference(message: Message): MessageReference | null {
+    return message.forwardedFrom ?? this.findMessageReference(message.forwardedFromMessageId);
+  }
+
+  shouldRenderContent(message: Message): boolean {
+    const forwardedReference = this.getForwardedReference(message);
+
+    return !forwardedReference || forwardedReference.content !== message.content;
+  }
+
+  emojiForReaction(type: MessageReactionType): string {
+    return this.reactionOptions.find((reaction) => reaction.type === type)?.emoji ?? '';
+  }
+
+  labelForReaction(type: MessageReactionType): string {
+    return this.reactionOptions.find((reaction) => reaction.type === type)?.label ?? type;
   }
 
   private markCurrentChatAsRead(): void {
@@ -310,5 +433,30 @@ export class ChatComponent {
     }
 
     return 'Sent';
+  }
+
+  private findMessageReference(messageId: string | null | undefined): MessageReference | null {
+    if (!messageId) {
+      return null;
+    }
+
+    const message = this.messages().find((candidate) => candidate.id === messageId);
+
+    if (!message) {
+      return null;
+    }
+
+    return {
+      id: message.id,
+      senderFullName: message.sender.fullName,
+      content: message.content,
+    };
+  }
+
+  private normalizeMessage(message: Message): Message {
+    return {
+      ...message,
+      reactions: message.reactions ?? [],
+    };
   }
 }

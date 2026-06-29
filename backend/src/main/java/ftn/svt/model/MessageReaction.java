@@ -6,45 +6,38 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class)
 @Entity
-public class Message {
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"message_id", "reactor_id"})
+        }
+)
+public class MessageReaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
     private UUID id;
 
-    @ManyToOne(optional = false)
-    private ChatMember sender;
-
-    @Column(nullable = false)
-    private String content;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    private Message message;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    private Chat chat;
+    private ChatMember reactor;
 
-    @ManyToOne
-    private Message replyTo;
-
-    @ManyToOne
-    private Message forwardedFrom;
-
-    @Builder.Default
-    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MessageReaction> reactions = new ArrayList<>();
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MessageReactionType type;
 
     @CreatedDate
     private Instant createdAt;
-
 }

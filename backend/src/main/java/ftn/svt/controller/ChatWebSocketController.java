@@ -2,6 +2,7 @@ package ftn.svt.controller;
 
 import ftn.svt.model.dto.chat.ChatEventResponse;
 import ftn.svt.model.dto.chat.ChatMessageRequest;
+import ftn.svt.model.dto.chat.MessageReactionRequest;
 import ftn.svt.model.dto.chat.MessageResponse;
 import ftn.svt.model.dto.chat.MessageStatusResponse;
 import ftn.svt.service.ChatService;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
@@ -26,7 +28,13 @@ public class ChatWebSocketController {
         String senderUsername = principal.getName();
 
         MessageResponse savedMessage =
-                chatService.sendMessage(senderUsername, request.chatId(), request.content());
+                chatService.sendMessage(
+                        senderUsername,
+                        request.chatId(),
+                        request.content(),
+                        request.replyToMessageId(),
+                        request.forwardedFromMessageId()
+                );
 
         Collection<String> memberUsernames =
                 chatService.getChatMemberUsernames(request.chatId());
@@ -65,6 +73,36 @@ public class ChatWebSocketController {
                     null,
                     chatService.getUnreadCount(request.chatId(), username),
                     List.of(deliveredStatus)
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/chat-events",
+                    event
+            );
+        }
+    }
+
+    @MessageMapping("/chat.react")
+    public void reactToMessage(MessageReactionRequest request, Principal principal) {
+        UUID chatId = chatService.reactToMessage(
+                principal.getName(),
+                request.messageId(),
+                request.type()
+        );
+
+        Collection<String> memberUsernames =
+                chatService.getChatMemberUsernames(chatId);
+
+        for (String username : memberUsernames) {
+            ChatEventResponse event = new ChatEventResponse(
+                    "MESSAGE_REACTIONS_UPDATED",
+                    chatId,
+                    null,
+                    chatService.getUnreadCount(chatId, username),
+                    List.of(),
+                    request.messageId(),
+                    chatService.getReactionSummariesForMessage(request.messageId(), username)
             );
 
             messagingTemplate.convertAndSendToUser(

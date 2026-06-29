@@ -72,11 +72,28 @@ export interface Message {
   content: string;
   replyToMessageId?: string;
   forwardedFromMessageId?: string;
+  replyTo?: MessageReference | null;
+  forwardedFrom?: MessageReference | null;
   createdAt: Date;
   deliveryStatus: MessageDeliveryStatus;
+  reactions: MessageReactionSummary[];
 }
 
 export type MessageDeliveryStatus = 'SENT' | 'DELIVERED' | 'READ';
+
+export interface MessageReference {
+  id: string;
+  senderFullName: string;
+  content: string;
+}
+
+export type MessageReactionType = 'HEART' | 'LIKE' | 'LAUGH' | 'CRY';
+
+export interface MessageReactionSummary {
+  type: MessageReactionType;
+  count: number;
+  reactedByMe: boolean;
+}
 
 export interface MessageReceipt {
   messageId: string;
@@ -93,7 +110,10 @@ export interface MessageStatus {
   status: MessageDeliveryStatus;
 }
 
-export type ChatEventType = 'MESSAGE_CREATED' | 'MESSAGE_STATUSES_UPDATED';
+export type ChatEventType =
+  | 'MESSAGE_CREATED'
+  | 'MESSAGE_STATUSES_UPDATED'
+  | 'MESSAGE_REACTIONS_UPDATED';
 
 export interface ChatEvent {
   type: ChatEventType;
@@ -101,6 +121,8 @@ export interface ChatEvent {
   message?: Message;
   unreadCount: number;
   messageStatuses?: MessageStatus[];
+  messageId?: string;
+  messageReactions?: MessageReactionSummary[];
 }
 
 export type AnalyticsGranularity = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';

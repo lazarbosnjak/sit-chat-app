@@ -4,5 +4,7 @@ import java.util.UUID;
 
 public record ChatMessageRequest(
         UUID chatId,
-        String content
+        String content,
+        UUID replyToMessageId,
+        UUID forwardedFromMessageId
 ) {}
