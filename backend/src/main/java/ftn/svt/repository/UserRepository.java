@@ -6,13 +6,36 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsername(String username);
+
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Instant rangeStart,
+            Instant rangeEnd
+    );
+
+    @Query(
+            value = """
+                    select date_trunc(:bucket, u.created_at at time zone 'UTC'), count(*)
+                    from users u
+                    where u.created_at >= :rangeStart and u.created_at < :rangeEnd
+                    group by 1
+                    order by 1
+                    """,
+            nativeQuery = true
+    )
+    List<Object[]> countRegistrationsByBucket(
+            @Param("rangeStart") Instant rangeStart,
+            @Param("rangeEnd") Instant rangeEnd,
+            @Param("bucket") String bucket
+    );
 
     @Query("""
                 select u

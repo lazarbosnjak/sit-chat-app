@@ -102,3 +102,50 @@ export interface ChatEvent {
   unreadCount: number;
   messageStatuses?: MessageStatus[];
 }
+
+export type AnalyticsGranularity = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+
+export interface AnalyticsQuery {
+  from: string;
+  to: string;
+  granularity: AnalyticsGranularity;
+  topLimit: number;
+}
+
+export interface AnalyticsSeriesPoint {
+  bucketStart: string;
+  bucketEnd: string;
+  registeredUsers: number;
+  activeUsers: number;
+  exchangedMessages: number;
+  createdGroups: number;
+}
+
+export interface AnalyticsTopUser {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  pfpUrl: string;
+  messageCount: number;
+}
+
+export interface AnalyticsTopGroup {
+  id: string;
+  name?: string | null;
+  imageUrl?: string | null;
+  messageCount: number;
+}
+
+export interface SystemAnalytics {
+  from: string;
+  to: string;
+  granularity: AnalyticsGranularity;
+  totalRegisteredUsers: number;
+  totalActiveUsers: number;
+  totalExchangedMessages: number;
+  totalCreatedGroups: number;
+  series: AnalyticsSeriesPoint[];
+  topUsers: AnalyticsTopUser[];
+  topGroups: AnalyticsTopGroup[];
+}
