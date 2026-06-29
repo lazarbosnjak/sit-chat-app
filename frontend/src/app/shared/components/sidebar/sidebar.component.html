@@ -4,13 +4,25 @@
     <div class="flex gap-2">
       <button
         class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
+        title="Home"
+        aria-label="Home"
         (click)="navigateTo('/')"
       >
         <svg lucideHouse></svg>
       </button>
+      <button
+        class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
+        title="Starred messages"
+        aria-label="Starred messages"
+        (click)="navigateTo('starred-messages')"
+      >
+        <svg lucideStar></svg>
+      </button>
       @if (authService.hasRole(ROLE_ADMIN)) {
         <button
           class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
+          title="Admin"
+          aria-label="Admin"
           (click)="navigateTo('admin/dashboard')"
         >
           <svg lucideGavel></svg>
@@ -20,6 +32,8 @@
 
     <button
       class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
+      title="New chat"
+      aria-label="New chat"
       (click)="openNewChatModal()"
     >
       <svg lucideMessageCirclePlus></svg>

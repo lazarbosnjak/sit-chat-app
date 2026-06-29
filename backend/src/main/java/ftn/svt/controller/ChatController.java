@@ -7,7 +7,9 @@ import ftn.svt.model.dto.chat.ChatEventResponse;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
 import ftn.svt.model.dto.chat.MessageReceiptResponse;
+import ftn.svt.model.dto.chat.MessageStarUpdateResponse;
 import ftn.svt.model.dto.chat.MessageStatusResponse;
+import ftn.svt.model.dto.chat.StarredMessageResponse;
 import ftn.svt.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,12 @@ public class ChatController {
         return ResponseEntity.ok(res);
     }
 
+    @GetMapping("/me/starred-messages")
+    public ResponseEntity<?> getMyStarredMessages(Principal principal) {
+        List<StarredMessageResponse> res = chatService.getStarredMessages(principal.getName());
+        return ResponseEntity.ok(res);
+    }
+
     @PreAuthorize("@chatSecurity.canAccessChat(authentication, #id)")
     @GetMapping({"/{id}"})
     public ResponseEntity<?> getById(
@@ -80,6 +88,22 @@ public class ChatController {
         var res = receipts.stream()
                 .map(MessageReceiptResponse::from)
                 .toList();
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canAccessChat(authentication, #chatId)")
+    @PatchMapping("/{chatId}/messages/{messageId}/star")
+    public ResponseEntity<?> toggleStarredMessage(
+            @PathVariable UUID chatId,
+            @PathVariable UUID messageId,
+            Principal principal
+    ) {
+        MessageStarUpdateResponse res = chatService.toggleStarredMessage(
+                principal.getName(),
+                chatId,
+                messageId
+        );
 
         return ResponseEntity.ok(res);
     }

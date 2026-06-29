@@ -8,7 +8,7 @@ import { UserService } from '@core/services/user.service';
 import { environment as env } from '@environments/environment';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { Chat, User } from '@shared/types/api.types';
-import { LucideGavel, LucideHouse, LucideMessageCirclePlus } from '@lucide/angular';
+import { LucideGavel, LucideHouse, LucideMessageCirclePlus, LucideStar } from '@lucide/angular';
 
 type ProfilePictureFilter = 'ANY' | 'SET' | 'NOT_SET';
 
@@ -29,7 +29,14 @@ const EMPTY_SEARCH_MODEL: UserSearchModel = {
 @Component({
   selector: 'app-sidebar',
   templateUrl: './sidebar.component.html',
-  imports: [ModalComponent, FormField, LucideHouse, LucideMessageCirclePlus, LucideGavel],
+  imports: [
+    ModalComponent,
+    FormField,
+    LucideHouse,
+    LucideMessageCirclePlus,
+    LucideGavel,
+    LucideStar,
+  ],
 })
 export class SidebarComponent {
   private readonly http = inject(HttpClient);

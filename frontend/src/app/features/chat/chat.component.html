@@ -111,6 +111,10 @@
                       [class.text-blue-100]="isOwnMessage(message)"
                       [class.text-gray-400]="!isOwnMessage(message)"
                     >
+                      @if (message.starredByMe) {
+                        <span title="Starred" aria-label="Starred">★</span>
+                      }
+
                       <span>{{ formatMessageTime(message.createdAt) }}</span>
 
                       @if (isOwnMessage(message)) {
@@ -133,6 +137,21 @@
                   <div
                     class="flex shrink-0 items-center gap-1 rounded-full bg-white p-1 text-gray-600 shadow-sm opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100"
                   >
+                    <button
+                      type="button"
+                      class="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-gray-100"
+                      [class.text-yellow-500]="message.starredByMe"
+                      [title]="message.starredByMe ? 'Unstar' : 'Star'"
+                      [attr.aria-label]="message.starredByMe ? 'Unstar' : 'Star'"
+                      (click)="toggleStarredMessage(message)"
+                    >
+                      <svg
+                        lucideStar
+                        class="h-4 w-4"
+                        [class.fill-yellow-400]="message.starredByMe"
+                      ></svg>
+                    </button>
+
                     <button
                       type="button"
                       class="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-gray-100"

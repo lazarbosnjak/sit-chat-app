@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { UserService } from '@core/services/user.service';
 import { environment as env } from '@environments/environment';
-import { Chat, Message, MessageReceipt } from '@shared/types/api.types';
+import {
+  Chat,
+  Message,
+  MessageReceipt,
+  MessageStarUpdate,
+  StarredMessage,
+} from '@shared/types/api.types';
 import { firstValueFrom, Observable } from 'rxjs';
 
 @Injectable({
@@ -62,6 +68,17 @@ export class ChatService {
 
   getMessageReceiptsByChatId(chatId: string): Observable<MessageReceipt[]> {
     return this.http.get<MessageReceipt[]>(`${env.apiUrl}/chats/${chatId}/message-receipts`);
+  }
+
+  getStarredMessages(): Observable<StarredMessage[]> {
+    return this.http.get<StarredMessage[]>(`${env.apiUrl}/chats/me/starred-messages`);
+  }
+
+  toggleStarredMessage(chatId: string, messageId: string): Observable<MessageStarUpdate> {
+    return this.http.patch<MessageStarUpdate>(
+      `${env.apiUrl}/chats/${chatId}/messages/${messageId}/star`,
+      {},
+    );
   }
 
   getChatPfpUrl(chat: Chat): string {

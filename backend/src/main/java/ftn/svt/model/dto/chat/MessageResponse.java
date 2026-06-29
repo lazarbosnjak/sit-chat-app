@@ -18,7 +18,8 @@ public record MessageResponse(
         String content,
         Instant createdAt,
         ReceiptStatus deliveryStatus,
-        List<MessageReactionSummaryResponse> reactions
+        List<MessageReactionSummaryResponse> reactions,
+        boolean starredByMe
 ) {
     public static MessageResponse from(Message message) {
         return from(message, ReceiptStatus.SENT);
@@ -32,6 +33,15 @@ public record MessageResponse(
             Message message,
             ReceiptStatus deliveryStatus,
             List<MessageReactionSummaryResponse> reactions
+    ) {
+        return from(message, deliveryStatus, reactions, false);
+    }
+
+    public static MessageResponse from(
+            Message message,
+            ReceiptStatus deliveryStatus,
+            List<MessageReactionSummaryResponse> reactions,
+            boolean starredByMe
     ) {
         return new MessageResponse(
                 message.getId(),
@@ -52,7 +62,8 @@ public record MessageResponse(
                 message.getContent(),
                 message.getCreatedAt(),
                 deliveryStatus,
-                reactions
+                reactions,
+                starredByMe
         );
     }
 }

@@ -6,7 +6,9 @@ import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
 import ftn.svt.model.dto.chat.MessageReactionSummaryResponse;
 import ftn.svt.model.dto.chat.MessageResponse;
+import ftn.svt.model.dto.chat.MessageStarUpdateResponse;
 import ftn.svt.model.dto.chat.MessageStatusResponse;
+import ftn.svt.model.dto.chat.StarredMessageResponse;
 import ftn.svt.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final MessageReceiptRepository messageReceiptRepository;
     private final MessageReactionRepository messageReactionRepository;
+    private final StarredMessageRepository starredMessageRepository;
     private final ChatMemberRepository chatMemberRepository;
     private final UserActivityService userActivityService;
 
@@ -120,12 +123,14 @@ public class ChatService {
         Map<UUID, ReceiptStatus> deliveryStatuses = getDeliveryStatuses(messages);
         Map<UUID, List<MessageReactionSummaryResponse>> reactionSummaries =
                 getReactionSummaries(messages, viewerUsername);
+        Set<UUID> starredMessageIds = getStarredMessageIds(messages, viewerUsername);
 
         return messages.stream()
                 .map(message -> MessageResponse.from(
                         message,
                         deliveryStatuses.getOrDefault(message.getId(), ReceiptStatus.SENT),
-                        reactionSummaries.getOrDefault(message.getId(), List.of())
+                        reactionSummaries.getOrDefault(message.getId(), List.of()),
+                        starredMessageIds.contains(message.getId())
                 ))
                 .toList();
     }
@@ -234,6 +239,92 @@ public class ChatService {
         userActivityService.recordActivity(sender.getId(), UserActivityType.MESSAGE_SENT);
 
         return MessageResponse.from(savedMessage, getDeliveryStatus(receipts), List.of());
+    }
+
+    @Transactional
+    public MessageStarUpdateResponse toggleStarredMessage(String username, UUID chatId, UUID messageId) {
+        if (messageId == null) {
+            throw ApiException.badRequest("Message id is required");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
+
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> ApiException.notFound("Message with this id does not exist"));
+
+        if (!message.getChat().getId().equals(chatId)) {
+            throw ApiException.badRequest("Message must belong to the selected chat");
+        }
+
+        boolean canAccessChat = chatRepository.existsByIdAndMembersUserUsername(chatId, username);
+
+        if (!canAccessChat) {
+            throw ApiException.forbidden("You are not a member of this chat");
+        }
+
+        Optional<StarredMessage> existingStar =
+                starredMessageRepository.findByMessageIdAndUserId(messageId, user.getId());
+
+        if (existingStar.isPresent()) {
+            starredMessageRepository.delete(existingStar.get());
+            return new MessageStarUpdateResponse(messageId, false);
+        }
+
+        StarredMessage starredMessage = StarredMessage.builder()
+                .message(message)
+                .user(user)
+                .build();
+
+        starredMessageRepository.save(starredMessage);
+        return new MessageStarUpdateResponse(messageId, true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StarredMessageResponse> getStarredMessages(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
+
+        List<StarredMessage> starredMessages =
+                starredMessageRepository.findAllByUserUsernameOrderByCreatedAtDesc(username);
+
+        if (starredMessages.isEmpty()) {
+            return List.of();
+        }
+
+        List<Message> messages = starredMessages.stream()
+                .map(StarredMessage::getMessage)
+                .toList();
+
+        Map<UUID, ReceiptStatus> deliveryStatuses = getDeliveryStatuses(messages);
+        Map<UUID, List<MessageReactionSummaryResponse>> reactionSummaries =
+                getReactionSummaries(messages, username);
+        Map<UUID, Long> unreadCounts = messageReceiptRepository
+                .countUnreadByChatForUser(user.getId())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        return starredMessages.stream()
+                .map(starredMessage -> {
+                    Message message = starredMessage.getMessage();
+                    Chat chat = message.getChat();
+
+                    return new StarredMessageResponse(
+                            starredMessage.getId(),
+                            starredMessage.getCreatedAt(),
+                            ChatInfoResponse.from(chat, unreadCounts.getOrDefault(chat.getId(), 0L)),
+                            MessageResponse.from(
+                                    message,
+                                    deliveryStatuses.getOrDefault(message.getId(), ReceiptStatus.SENT),
+                                    reactionSummaries.getOrDefault(message.getId(), List.of()),
+                                    true
+                            )
+                    );
+                })
+                .toList();
     }
 
     @Transactional
@@ -424,6 +515,21 @@ public class ChatService {
                                 viewerUsername
                         )
                 ));
+    }
+
+    private Set<UUID> getStarredMessageIds(List<Message> messages, String viewerUsername) {
+        if (messages.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<UUID> messageIds = messages.stream()
+                .map(Message::getId)
+                .collect(Collectors.toSet());
+
+        return starredMessageRepository.findByMessageIdInAndUserUsername(messageIds, viewerUsername)
+                .stream()
+                .map(starredMessage -> starredMessage.getMessage().getId())
+                .collect(Collectors.toSet());
     }
 
     private List<MessageReactionSummaryResponse> summarizeReactions(

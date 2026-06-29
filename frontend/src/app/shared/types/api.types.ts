@@ -77,6 +77,7 @@ export interface Message {
   createdAt: Date;
   deliveryStatus: MessageDeliveryStatus;
   reactions: MessageReactionSummary[];
+  starredByMe: boolean;
 }
 
 export type MessageDeliveryStatus = 'SENT' | 'DELIVERED' | 'READ';
@@ -108,6 +109,18 @@ export interface MessageReceipt {
 export interface MessageStatus {
   messageId: string;
   status: MessageDeliveryStatus;
+}
+
+export interface MessageStarUpdate {
+  messageId: string;
+  starred: boolean;
+}
+
+export interface StarredMessage {
+  id: string;
+  starredAt: Date;
+  chat: Chat;
+  message: Message;
 }
 
 export type ChatEventType =

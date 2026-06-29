@@ -4,6 +4,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from '@core/guards/admin.guard';
 import { ChatComponent } from '@features/chat/chat.component';
 import { ProfileComponent } from '@features/profile/profile.component';
+import { StarredMessagesComponent } from '@features/starred-messages/starred-messages.component';
 
 export const routes: Routes = [
   {
@@ -29,6 +30,11 @@ export const routes: Routes = [
   {
     path: 'profile',
     component: ProfileComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'starred-messages',
+    component: StarredMessagesComponent,
     canActivate: [authGuard],
   },
 ];

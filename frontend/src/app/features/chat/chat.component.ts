@@ -31,7 +31,7 @@ import {
   MessageStatus,
   User,
 } from '@shared/types/api.types';
-import { LucideForward, LucideReply, LucideSend, LucideX } from '@lucide/angular';
+import { LucideForward, LucideReply, LucideSend, LucideStar, LucideX } from '@lucide/angular';
 import { StompSubscription } from '@stomp/stompjs';
 import { forkJoin, switchMap, tap } from 'rxjs';
 
@@ -45,6 +45,7 @@ import { forkJoin, switchMap, tap } from 'rxjs';
     LucideForward,
     LucideReply,
     LucideSend,
+    LucideStar,
     LucideX,
   ],
 })
@@ -380,6 +381,30 @@ export class ChatComponent {
     });
   }
 
+  toggleStarredMessage(message: Message): void {
+    const chatId = this.selectedChatId();
+
+    if (!chatId) {
+      return;
+    }
+
+    this.chatService
+      .toggleStarredMessage(chatId, message.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (update) => {
+          this.messages.update((messages) =>
+            messages.map((candidate) =>
+              candidate.id === update.messageId
+                ? { ...candidate, starredByMe: update.starred }
+                : candidate,
+            ),
+          );
+        },
+        error: (err) => console.error('Could not update starred message', err),
+      });
+  }
+
   getForwardableChats(): Chat[] {
     const selectedChatId = this.selectedChatId();
 
@@ -457,6 +482,7 @@ export class ChatComponent {
     return {
       ...message,
       reactions: message.reactions ?? [],
+      starredByMe: message.starredByMe ?? false,
     };
   }
 }
