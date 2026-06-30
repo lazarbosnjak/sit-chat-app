@@ -48,8 +48,9 @@ export interface User {
 
 export interface Chat {
   id: string;
-  name?: string;
-  imageUrl?: string;
+  name?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
   type: 'DIRECT' | 'GROUP';
   createdAt: Date;
   members: ChatMember[];
@@ -63,10 +64,13 @@ export interface ChatMember {
   firstName: string;
   lastName: string;
   fullName: string;
+  phoneNumber?: string | null;
   pfpUrl: string;
   status?: string | null;
   aboutMe?: string | null;
+  lastActiveAt?: Date | null;
   role: 'ADMIN' | 'MEMBER';
+  active: boolean;
 }
 
 export interface Message {
@@ -74,6 +78,7 @@ export interface Message {
   chatId: string;
   sender: ChatMember;
   content: string;
+  systemMessage: boolean;
   replyToMessageId?: string;
   forwardedFromMessageId?: string;
   replyTo?: MessageReference | null;

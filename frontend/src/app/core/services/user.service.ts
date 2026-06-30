@@ -41,6 +41,14 @@ export class UserService {
     return this.http.get<User>(`${env.apiUrl}/users/${userId}`);
   }
 
+  searchUsers(search: string) {
+    return this.http.get<User[]>(`${env.apiUrl}/users`, {
+      params: {
+        search,
+      },
+    });
+  }
+
   getAllUsers() {
     const user = this.getLoggedInUser();
     if (user.role !== 'ADMIN') {

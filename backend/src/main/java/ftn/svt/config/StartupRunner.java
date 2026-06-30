@@ -120,6 +120,7 @@ public class StartupRunner implements CommandLineRunner {
         Chat chat = Chat.builder()
                 .id(null)
                 .name(null)
+                .description(null)
                 .imageUrl(null)
                 .members(null)
                 .messages(null)

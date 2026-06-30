@@ -31,6 +31,9 @@ public class Message {
     @Column(nullable = false)
     private String content;
 
+    @Builder.Default
+    private boolean systemMessage = false;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private Chat chat;
 

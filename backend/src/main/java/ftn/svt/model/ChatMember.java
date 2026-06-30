@@ -34,4 +34,7 @@ public class ChatMember {
 
     @Enumerated(EnumType.STRING)
     private ChatRole role;
+
+    @Builder.Default
+    private boolean active = true;
 }

@@ -3,6 +3,7 @@ import {
   afterNextRender,
   Component,
   DestroyRef,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -32,9 +33,43 @@ import {
   MessageStatus,
   User,
 } from '@shared/types/api.types';
-import { LucideForward, LucideReply, LucideSend, LucideStar, LucideX } from '@lucide/angular';
+import {
+  LucideForward,
+  LucideReply,
+  LucideSend,
+  LucideStar,
+  LucideUsers,
+  LucideX,
+} from '@lucide/angular';
 import { StompSubscription } from '@stomp/stompjs';
 import { forkJoin, switchMap, tap } from 'rxjs';
+
+interface GroupSettingsModel {
+  name: string;
+  description: string;
+  imageUrl: string;
+}
+
+interface GroupMemberSearchModel {
+  content: string;
+}
+
+interface AddableGroupMember {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phoneNumber?: string | null;
+  pfpUrl: string;
+  lastActiveAt?: Date | string | null;
+}
+
+const EMPTY_GROUP_SETTINGS_MODEL: GroupSettingsModel = {
+  name: '',
+  description: '',
+  imageUrl: '',
+};
 
 @Component({
   templateUrl: './chat.component.html',
@@ -47,6 +82,7 @@ import { forkJoin, switchMap, tap } from 'rxjs';
     LucideReply,
     LucideSend,
     LucideStar,
+    LucideUsers,
     LucideX,
   ],
 })
@@ -76,6 +112,39 @@ export class ChatComponent {
         },
       );
     });
+
+    effect((onCleanup) => {
+      const content = this.groupMemberSearchModel().content.trim();
+      const DEBOUNCE_TIMER = 300;
+
+      if (!this.isGroupSettingsModalOpen() || !this.isCurrentUserGroupAdmin() || !content) {
+        this.groupMemberSearchResults.set([]);
+        this.isSearchingGroupMembers.set(false);
+        return;
+      }
+
+      this.isSearchingGroupMembers.set(true);
+      let subscription: { unsubscribe: () => void } | null = null;
+
+      const timeoutId = setTimeout(() => {
+        subscription = this.userService.searchUsers(content).subscribe({
+          next: (users) => {
+            this.groupMemberSearchResults.set(users);
+            this.isSearchingGroupMembers.set(false);
+          },
+          error: (err) => {
+            console.error('Could not search users', err);
+            this.groupMemberSearchResults.set([]);
+            this.isSearchingGroupMembers.set(false);
+          },
+        });
+      }, DEBOUNCE_TIMER);
+
+      onCleanup(() => {
+        clearTimeout(timeoutId);
+        subscription?.unsubscribe();
+      });
+    });
   }
 
   private scrollToBottom() {
@@ -99,8 +168,72 @@ export class ChatComponent {
   forwardingMessage = signal<Message | null>(null);
   isForwardModalOpen = signal(false);
   isUserProfileModalOpen = signal(false);
+  isGroupSettingsModalOpen = signal(false);
   selectedProfileUser = signal<User | null>(null);
   userProfileError = signal<string | null>(null);
+  groupSettingsError = signal<string | null>(null);
+  addGroupMemberError = signal<string | null>(null);
+  isSavingGroupSettings = signal(false);
+  isUpdatingGroupMember = signal(false);
+  isSearchingGroupMembers = signal(false);
+  groupMemberSearchResults = signal<User[]>([]);
+
+  groupSettingsModel = signal<GroupSettingsModel>({ ...EMPTY_GROUP_SETTINGS_MODEL });
+  groupSettingsForm = form(this.groupSettingsModel);
+  groupMemberSearchModel = signal<GroupMemberSearchModel>({ content: '' });
+  groupMemberSearchForm = form(this.groupMemberSearchModel);
+
+  currentGroupMembers = computed(() => {
+    const chat = this.chat();
+
+    return chat?.type === 'GROUP' ? chat.members : [];
+  });
+
+  isCurrentUserGroupAdmin = computed(() => {
+    const currentUserId = this.currentUser()?.id;
+
+    return this.currentGroupMembers().some(
+      (member) => member.userId === currentUserId && member.role === 'ADMIN',
+    );
+  });
+
+  availableContactMembers = computed(() => {
+    const currentUserId = this.currentUser()?.id;
+    const currentMemberIds = new Set(this.currentGroupMembers().map((member) => member.userId));
+    const usersById = new Map<string, AddableGroupMember>();
+    const search = this.groupMemberSearchModel().content.trim().toLowerCase();
+
+    for (const chat of this.chatService.chats()) {
+      for (const member of chat.members) {
+        if (
+          member.userId === currentUserId ||
+          currentMemberIds.has(member.userId) ||
+          usersById.has(member.userId)
+        ) {
+          continue;
+        }
+
+        const candidate = this.memberToAddable(member);
+
+        if (!search || this.matchesAddableMemberSearch(candidate, search)) {
+          usersById.set(candidate.id, candidate);
+        }
+      }
+    }
+
+    return Array.from(usersById.values()).sort((a, b) =>
+      this.getAddableMemberName(a).localeCompare(this.getAddableMemberName(b)),
+    );
+  });
+
+  newGroupMemberSearchResults = computed(() => {
+    const currentMemberIds = new Set(this.currentGroupMembers().map((member) => member.userId));
+    const contactIds = new Set(this.availableContactMembers().map((member) => member.id));
+
+    return this.groupMemberSearchResults()
+      .filter((user) => !currentMemberIds.has(user.id) && !contactIds.has(user.id))
+      .map((user) => this.userToAddable(user));
+  });
 
   readonly reactionOptions: { type: MessageReactionType; emoji: string; label: string }[] = [
     { type: 'HEART', emoji: '❤', label: 'Heart' },
@@ -146,6 +279,7 @@ export class ChatComponent {
           this.messageReceipts.set(messageReceipts);
           this.cancelReply();
           this.closeForwardModal();
+          this.closeGroupSettingsModal();
 
           this.setupInfo(chat);
         }),
@@ -224,6 +358,183 @@ export class ChatComponent {
     this.isUserProfileModalOpen.set(false);
     this.selectedProfileUser.set(null);
     this.userProfileError.set(null);
+  }
+
+  openGroupSettingsModal(): void {
+    const chat = this.chat();
+
+    if (!chat || chat.type !== 'GROUP') {
+      return;
+    }
+
+    this.groupSettingsModel.set({
+      name: chat.name ?? '',
+      description: chat.description ?? '',
+      imageUrl: chat.imageUrl ?? '',
+    });
+    this.groupMemberSearchModel.set({ content: '' });
+    this.groupMemberSearchResults.set([]);
+    this.groupSettingsError.set(null);
+    this.addGroupMemberError.set(null);
+    this.isGroupSettingsModalOpen.set(true);
+  }
+
+  closeGroupSettingsModal(): void {
+    this.isGroupSettingsModalOpen.set(false);
+    this.groupSettingsError.set(null);
+    this.addGroupMemberError.set(null);
+    this.groupMemberSearchModel.set({ content: '' });
+    this.groupMemberSearchResults.set([]);
+    this.isSearchingGroupMembers.set(false);
+  }
+
+  saveGroupSettings(): void {
+    const chat = this.chat();
+    const name = this.groupSettingsModel().name.trim();
+
+    if (!chat || chat.type !== 'GROUP' || !this.isCurrentUserGroupAdmin() || !name) {
+      return;
+    }
+
+    this.isSavingGroupSettings.set(true);
+    this.groupSettingsError.set(null);
+
+    this.chatService
+      .updateGroupChat(chat.id, {
+        name,
+        description: this.groupSettingsModel().description.trim(),
+        imageUrl: this.groupSettingsModel().imageUrl.trim(),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedChat) => {
+          this.applyUpdatedChat(updatedChat);
+          this.reloadCurrentMessages();
+          this.isSavingGroupSettings.set(false);
+        },
+        error: (err) => {
+          console.error('Could not update group', err);
+          this.groupSettingsError.set(this.getErrorMessage(err, 'Could not update group.'));
+          this.isSavingGroupSettings.set(false);
+        },
+      });
+  }
+
+  addGroupMember(user: AddableGroupMember): void {
+    const chat = this.chat();
+
+    if (!chat || chat.type !== 'GROUP' || !this.isCurrentUserGroupAdmin()) {
+      return;
+    }
+
+    this.isUpdatingGroupMember.set(true);
+    this.addGroupMemberError.set(null);
+
+    this.chatService
+      .addGroupMembers(chat.id, [user.id])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedChat) => {
+          this.applyUpdatedChat(updatedChat);
+          this.reloadCurrentMessages();
+          this.groupMemberSearchResults.update((users) =>
+            users.filter((candidate) => candidate.id !== user.id),
+          );
+          this.isUpdatingGroupMember.set(false);
+        },
+        error: (err) => {
+          console.error('Could not add group member', err);
+          this.addGroupMemberError.set(this.getErrorMessage(err, 'Could not add group member.'));
+          this.isUpdatingGroupMember.set(false);
+        },
+      });
+  }
+
+  removeGroupMember(member: ChatMember): void {
+    const chat = this.chat();
+
+    if (!chat || chat.type !== 'GROUP' || !this.canRemoveGroupMember(member)) {
+      return;
+    }
+
+    this.isUpdatingGroupMember.set(true);
+    this.addGroupMemberError.set(null);
+
+    this.chatService
+      .removeGroupMember(chat.id, member.memberId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedChat) => {
+          this.applyUpdatedChat(updatedChat);
+          this.reloadCurrentMessages();
+          this.isUpdatingGroupMember.set(false);
+        },
+        error: (err) => {
+          console.error('Could not remove group member', err);
+          this.addGroupMemberError.set(this.getErrorMessage(err, 'Could not remove group member.'));
+          this.isUpdatingGroupMember.set(false);
+        },
+      });
+  }
+
+  toggleGroupMemberRole(member: ChatMember): void {
+    const chat = this.chat();
+
+    if (!chat || chat.type !== 'GROUP' || !this.canChangeGroupMemberRole(member)) {
+      return;
+    }
+
+    const role = member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN';
+    this.isUpdatingGroupMember.set(true);
+    this.addGroupMemberError.set(null);
+
+    this.chatService
+      .updateGroupMemberRole(chat.id, member.memberId, role)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedChat) => {
+          this.applyUpdatedChat(updatedChat);
+          this.reloadCurrentMessages();
+          this.isUpdatingGroupMember.set(false);
+        },
+        error: (err) => {
+          console.error('Could not update group member role', err);
+          this.addGroupMemberError.set(this.getErrorMessage(err, 'Could not update group role.'));
+          this.isUpdatingGroupMember.set(false);
+        },
+      });
+  }
+
+  canSaveGroupSettings(): boolean {
+    return (
+      this.isCurrentUserGroupAdmin() &&
+      this.groupSettingsModel().name.trim().length > 0 &&
+      !this.isSavingGroupSettings()
+    );
+  }
+
+  canChangeGroupMemberRole(member: ChatMember): boolean {
+    if (!this.isCurrentUserGroupAdmin() || member.userId === this.currentUser()?.id) {
+      return false;
+    }
+
+    return member.role !== 'ADMIN' || this.activeGroupAdminCount() > 1;
+  }
+
+  canRemoveGroupMember(member: ChatMember): boolean {
+    if (!this.isCurrentUserGroupAdmin() || member.userId === this.currentUser()?.id) {
+      return false;
+    }
+
+    return member.role !== 'ADMIN' || this.activeGroupAdminCount() > 1;
+  }
+
+  activeGroupAdminCount(): number {
+    return this.currentGroupMembers().filter((member) => member.role === 'ADMIN').length;
+  }
+
+  getAddableMemberName(user: AddableGroupMember): string {
+    return user.fullName || `${user.firstName} ${user.lastName}`.trim();
   }
 
   isOwnMessage(message: Message): boolean {
@@ -517,11 +828,87 @@ export class ChatComponent {
     };
   }
 
+  private applyUpdatedChat(updatedChat: Chat): void {
+    this.chat.set(updatedChat);
+    this.setupInfo(updatedChat);
+
+    this.chatService.chats.update((chats) =>
+      chats.map((chat) => (chat.id === updatedChat.id ? updatedChat : chat)),
+    );
+  }
+
+  private reloadCurrentMessages(): void {
+    const chatId = this.selectedChatId();
+
+    if (!chatId) {
+      return;
+    }
+
+    this.chatService
+      .getMessagesByChatId(chatId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (messages) => {
+          this.messages.set(messages.map((message) => this.normalizeMessage(message)));
+        },
+        error: (err) => console.error('Could not reload messages', err),
+      });
+  }
+
+  private userToAddable(user: User): AddableGroupMember {
+    return {
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      phoneNumber: user.phoneNumber,
+      pfpUrl: user.pfpUrl,
+      lastActiveAt: user.lastActiveAt,
+    };
+  }
+
+  private memberToAddable(member: ChatMember): AddableGroupMember {
+    return {
+      id: member.userId,
+      username: member.username,
+      firstName: member.firstName,
+      lastName: member.lastName,
+      fullName: member.fullName,
+      phoneNumber: member.phoneNumber,
+      pfpUrl: member.pfpUrl,
+      lastActiveAt: member.lastActiveAt,
+    };
+  }
+
+  private matchesAddableMemberSearch(user: AddableGroupMember, search: string): boolean {
+    return [
+      user.username,
+      user.firstName,
+      user.lastName,
+      this.getAddableMemberName(user),
+      user.phoneNumber ?? '',
+    ].some((value) => value.toLowerCase().includes(search));
+  }
+
+  private getErrorMessage(err: unknown, fallback: string): string {
+    if (typeof err === 'object' && err !== null && 'error' in err) {
+      const error = (err as { error?: { detail?: string } }).error;
+
+      if (error?.detail) {
+        return error.detail;
+      }
+    }
+
+    return fallback;
+  }
+
   private normalizeMessage(message: Message): Message {
     return {
       ...message,
       reactions: message.reactions ?? [],
       starredByMe: message.starredByMe ?? false,
+      systemMessage: message.systemMessage ?? false,
     };
   }
 }

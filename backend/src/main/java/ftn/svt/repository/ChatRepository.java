@@ -45,16 +45,20 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
                 select c
                 from Chat c
                 join c.members m
-                where m.user.id in :memberIds
+                where c.type = :type
+                    and m.active = true
+                    and m.user.id in :memberIds
                 group by c.id
                 having count(distinct m.user.id) = :memberCount
                    and (
                        select count(cm)
                        from ChatMember cm
                        where cm.chat = c
+                         and cm.active = true
                    ) = :memberCount
             """)
-    Optional<Chat> findByExactMemberIds(
+    Optional<Chat> findByTypeAndExactMemberIds(
+            @Param("type") ChatType type,
             @Param("memberIds") Set<UUID> memberIds,
             @Param("memberCount") long memberCount
     );
@@ -64,8 +68,20 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
             from Chat c
             join c.members m
             where m.user.id = :id
+              and m.active = true
             """)
     Collection<Chat> findAllWithUserId(UUID id);
 
-    boolean existsByIdAndMembersUserUsername(UUID chatId, String username);
+    @Query("""
+            select case when count(c) > 0 then true else false end
+            from Chat c
+            join c.members m
+            where c.id = :chatId
+              and m.user.username = :username
+              and m.active = true
+            """)
+    boolean existsActiveByIdAndMemberUsername(
+            @Param("chatId") UUID chatId,
+            @Param("username") String username
+    );
 }

@@ -24,12 +24,36 @@
           <p class="truncate text-sm text-gray-500">{{ recipient.status || 'No status set' }}</p>
         </button>
       } @else {
-        <img [src]="chatImage()" alt="Chat image" class="h-10 w-10 rounded-full object-cover" />
+        <button
+          type="button"
+          class="flex min-w-0 flex-1 items-center gap-3 text-left transition hover:opacity-85"
+          (click)="openGroupSettingsModal()"
+        >
+          @if (chatImage()) {
+            <img [src]="chatImage()" alt="Chat image" class="h-10 w-10 rounded-full object-cover" />
+          } @else {
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700"
+            >
+              {{ chatTitle().charAt(0).toUpperCase() }}
+            </div>
+          }
 
-        <div class="min-w-0">
-          <h2 class="truncate font-semibold">{{ chatTitle() }}</h2>
-          <p class="text-sm text-gray-500">Group chat</p>
-        </div>
+          <div class="min-w-0">
+            <h2 class="truncate font-semibold">{{ chatTitle() }}</h2>
+            <p class="truncate text-sm text-gray-500">{{ chat()?.description || 'Group chat' }}</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100"
+          title="Group settings"
+          aria-label="Group settings"
+          (click)="openGroupSettingsModal()"
+        >
+          <svg lucideUsers class="h-5 w-5"></svg>
+        </button>
       }
     </header>
 
@@ -37,11 +61,21 @@
     <section #messagesContainer class="flex-1 overflow-y-auto p-6">
       @if (messages().length === 0) {
         <div class="flex h-full items-center justify-center text-gray-400">
-          Empty chat, send a message to start a conversation with this user!
+          Empty chat, send a message to start the conversation!
         </div>
       } @else {
         <div class="flex flex-col gap-4">
           @for (message of messages(); track message.id) {
+            @if (message.systemMessage) {
+              <div class="flex justify-center">
+                <div
+                  class="max-w-[80%] rounded-full bg-gray-200 px-4 py-2 text-center text-xs text-gray-600"
+                >
+                  <span>{{ message.content }}</span>
+                  <span class="ml-2 text-gray-400">{{ formatMessageTime(message.createdAt) }}</span>
+                </div>
+              </div>
+            } @else {
             <!-- message row -->
             <div
               class="group flex w-full items-end gap-2"
@@ -242,6 +276,7 @@
                 }
               </div>
             </div>
+            }
           }
         </div>
       }
@@ -395,5 +430,259 @@
     } @else {
       <p class="py-6 text-center text-sm text-gray-500">Loading profile...</p>
     }
+  </app-modal>
+}
+
+@if (isGroupSettingsModalOpen()) {
+  <app-modal title="Group settings" [wide]="true" (close)="closeGroupSettingsModal()">
+    <div class="grid gap-5">
+      @if (chat(); as currentChat) {
+        <section class="grid gap-3">
+          <div class="flex items-center gap-4">
+            @if (currentChat.imageUrl) {
+              <img
+                [src]="currentChat.imageUrl"
+                alt="Group image"
+                class="h-16 w-16 shrink-0 rounded-full object-cover"
+              />
+            } @else {
+              <div
+                class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-lg font-semibold text-blue-700"
+              >
+                {{ chatTitle().charAt(0).toUpperCase() }}
+              </div>
+            }
+
+            <div class="min-w-0">
+              <h2 class="truncate text-xl font-semibold">{{ chatTitle() }}</h2>
+              <p class="truncate text-sm text-gray-500">
+                {{ currentGroupMembers().length }} members
+              </p>
+            </div>
+          </div>
+
+          @if (isCurrentUserGroupAdmin()) {
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="grid gap-1 text-xs font-medium text-gray-600">
+                Group name
+                <input
+                  type="text"
+                  class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+                  [formField]="groupSettingsForm.name"
+                />
+              </label>
+
+              <label class="grid gap-1 text-xs font-medium text-gray-600">
+                Group image URL
+                <input
+                  type="url"
+                  class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+                  [formField]="groupSettingsForm.imageUrl"
+                />
+              </label>
+            </div>
+
+            <label class="grid gap-1 text-xs font-medium text-gray-600">
+              Description
+              <textarea
+                rows="2"
+                class="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+                [formField]="groupSettingsForm.description"
+              ></textarea>
+            </label>
+
+            @if (groupSettingsError()) {
+              <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ groupSettingsError() }}
+              </p>
+            }
+
+            <div class="flex justify-end">
+              <button
+                type="button"
+                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                [disabled]="!canSaveGroupSettings()"
+                (click)="saveGroupSettings()"
+              >
+                {{ isSavingGroupSettings() ? 'Saving...' : 'Save changes' }}
+              </button>
+            </div>
+          } @else {
+            <p class="whitespace-pre-wrap text-sm text-gray-700">
+              {{ currentChat.description || 'No group description set.' }}
+            </p>
+          }
+        </section>
+
+        <section class="grid gap-3 border-t border-gray-100 pt-4">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="text-sm font-semibold text-gray-900">Members</h3>
+            @if (isCurrentUserGroupAdmin()) {
+              <span class="text-xs text-gray-500">Group admin controls</span>
+            }
+          </div>
+
+          <div class="max-h-64 space-y-2 overflow-y-auto">
+            @for (member of currentGroupMembers(); track member.memberId) {
+              <div class="flex items-center gap-3 rounded-lg border border-gray-100 p-3">
+                <button
+                  type="button"
+                  class="shrink-0 rounded-full transition hover:opacity-85"
+                  [title]="member.fullName"
+                  [attr.aria-label]="member.fullName"
+                  (click)="openUserProfile(member.userId)"
+                >
+                  <img
+                    [src]="member.pfpUrl"
+                    alt="Profile picture"
+                    class="h-10 w-10 rounded-full object-cover"
+                  />
+                </button>
+
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-medium">
+                    {{ member.fullName }}
+                    @if (member.userId === currentUser()?.id) {
+                      <span class="font-normal text-gray-500">(you)</span>
+                    }
+                  </p>
+                  <p class="truncate text-sm text-gray-500">
+                    @{{ member.username }} - {{ member.role === 'ADMIN' ? 'Group admin' : 'Member' }}
+                  </p>
+                </div>
+
+                @if (isCurrentUserGroupAdmin()) {
+                  <div class="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      [disabled]="!canChangeGroupMemberRole(member) || isUpdatingGroupMember()"
+                      (click)="toggleGroupMemberRole(member)"
+                    >
+                      {{ member.role === 'ADMIN' ? 'Demote' : 'Promote' }}
+                    </button>
+
+                    <button
+                      type="button"
+                      class="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      [disabled]="!canRemoveGroupMember(member) || isUpdatingGroupMember()"
+                      (click)="removeGroupMember(member)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        @if (isCurrentUserGroupAdmin()) {
+          <section class="grid gap-3 border-t border-gray-100 pt-4">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-900">Add members</h3>
+              <p class="text-xs text-gray-500">Contacts are users from your existing chats.</p>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Search contacts or new users..."
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              [formField]="groupMemberSearchForm.content"
+            />
+
+            @if (addGroupMemberError()) {
+              <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ addGroupMemberError() }}
+              </p>
+            }
+
+            <div class="grid gap-4 lg:grid-cols-2">
+              <div class="min-h-0 rounded-lg border border-gray-200">
+                <header class="border-b border-gray-100 px-3 py-2">
+                  <h4 class="text-sm font-semibold text-gray-900">Contacts</h4>
+                </header>
+
+                <div class="max-h-52 overflow-y-auto p-2">
+                  @if (availableContactMembers().length === 0) {
+                    <p class="py-6 text-center text-sm text-gray-500">No contacts available.</p>
+                  }
+
+                  @for (user of availableContactMembers(); track user.id) {
+                    <button
+                      type="button"
+                      class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      [disabled]="isUpdatingGroupMember()"
+                      (click)="addGroupMember(user)"
+                    >
+                      <img
+                        [src]="user.pfpUrl"
+                        alt="Profile picture"
+                        class="h-10 w-10 rounded-full object-cover"
+                      />
+
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate font-medium">{{ getAddableMemberName(user) }}</p>
+                        <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+                      </div>
+
+                      <span class="text-sm font-medium text-blue-700">Add</span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="min-h-0 rounded-lg border border-gray-200">
+                <header class="border-b border-gray-100 px-3 py-2">
+                  <h4 class="text-sm font-semibold text-gray-900">New users</h4>
+                </header>
+
+                <div class="max-h-52 overflow-y-auto p-2">
+                  @if (!groupMemberSearchModel().content.trim()) {
+                    <p class="py-6 text-center text-sm text-gray-500">
+                      Search to add users outside your contacts.
+                    </p>
+                  }
+
+                  @if (isSearchingGroupMembers()) {
+                    <p class="py-6 text-center text-sm text-gray-500">Searching...</p>
+                  }
+
+                  @if (
+                    groupMemberSearchModel().content.trim() &&
+                    newGroupMemberSearchResults().length === 0 &&
+                    !isSearchingGroupMembers()
+                  ) {
+                    <p class="py-6 text-center text-sm text-gray-500">No new users found.</p>
+                  }
+
+                  @for (user of newGroupMemberSearchResults(); track user.id) {
+                    <button
+                      type="button"
+                      class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      [disabled]="isUpdatingGroupMember()"
+                      (click)="addGroupMember(user)"
+                    >
+                      <img
+                        [src]="user.pfpUrl"
+                        alt="Profile picture"
+                        class="h-10 w-10 rounded-full object-cover"
+                      />
+
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate font-medium">{{ getAddableMemberName(user) }}</p>
+                        <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+                      </div>
+
+                      <span class="text-sm font-medium text-blue-700">Add</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </section>
+        }
+      }
+    </div>
   </app-modal>
 }

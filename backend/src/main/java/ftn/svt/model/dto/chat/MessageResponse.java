@@ -16,6 +16,7 @@ public record MessageResponse(
         MessageReferenceResponse replyTo,
         MessageReferenceResponse forwardedFrom,
         String content,
+        boolean systemMessage,
         Instant createdAt,
         ReceiptStatus deliveryStatus,
         List<MessageReactionSummaryResponse> reactions,
@@ -60,6 +61,7 @@ public record MessageResponse(
                         ? MessageReferenceResponse.from(message.getForwardedFrom())
                         : null,
                 message.getContent(),
+                message.isSystemMessage(),
                 message.getCreatedAt(),
                 deliveryStatus,
                 reactions,

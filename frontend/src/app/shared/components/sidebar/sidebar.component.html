@@ -30,14 +30,25 @@
       }
     </div>
 
-    <button
-      class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
-      title="New chat"
-      aria-label="New chat"
-      (click)="openNewChatModal()"
-    >
-      <svg lucideMessageCirclePlus></svg>
-    </button>
+    <div class="flex gap-2">
+      <button
+        class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
+        title="New chat"
+        aria-label="New chat"
+        (click)="openNewChatModal()"
+      >
+        <svg lucideMessageCirclePlus></svg>
+      </button>
+
+      <button
+        class="rounded-full border border-gray-200 p-2 text-left text-xs transition hover:bg-gray-200 cursor-pointer"
+        title="New group"
+        aria-label="New group"
+        (click)="openNewGroupModal()"
+      >
+        <svg lucideUsers></svg>
+      </button>
+    </div>
   </div>
 
   <!-- Search -->
@@ -61,23 +72,25 @@
         [class.hover:bg-blue-50]="isSelectedChat(chat)"
         (click)="navigateTo(`chats/${chat.id}`)"
       >
-        <img
-          [src]="chatService.getChatPfpUrl(chat)"
-          alt="Profile picture"
-          class="h-12 w-12 shrink-0 rounded-full object-cover"
-        />
+        @if (chatService.getChatPfpUrl(chat)) {
+          <img
+            [src]="chatService.getChatPfpUrl(chat)"
+            alt="Chat image"
+            class="h-12 w-12 shrink-0 rounded-full object-cover"
+          />
+        } @else {
+          <div
+            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700"
+          >
+            {{ getGroupFallbackInitial(chat) }}
+          </div>
+        }
 
         <div class="min-w-0 flex-1">
           <div class="flex items-center justify-between gap-2">
-            @if (chat.type === 'DIRECT') {
-              <h2 class="truncate font-medium">
-                {{ chatService.getChatTitle(chat) }}
-              </h2>
-            } @else {
-              <h2 class="truncate font-medium">
-                {{ chat.name }}
-              </h2>
-            }
+            <h2 class="truncate font-medium">
+              {{ chatService.getChatTitle(chat) }}
+            </h2>
 
             <div class="flex shrink-0 items-center gap-2">
               <!-- <span class="text-xs text-gray-400">12:45</span> -->
@@ -196,6 +209,250 @@
           </div>
         </button>
       }
+    </div>
+  </app-modal>
+}
+
+@if (isNewGroupModalOpen()) {
+  <app-modal title="New group" [wide]="true" (close)="closeNewGroupModal()">
+    <div class="grid gap-4">
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="grid gap-1 text-xs font-medium text-gray-600">
+          Group name
+          <input
+            type="text"
+            placeholder="Project team"
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+            [formField]="groupForm.name"
+          />
+        </label>
+
+        <label class="grid gap-1 text-xs font-medium text-gray-600">
+          Group image URL
+          <input
+            type="url"
+            placeholder="https://..."
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+            [formField]="groupForm.imageUrl"
+          />
+        </label>
+      </div>
+
+      <label class="grid gap-1 text-xs font-medium text-gray-600">
+        Description
+        <textarea
+          rows="2"
+          placeholder="Optional group description"
+          class="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+          [formField]="groupForm.description"
+        ></textarea>
+      </label>
+
+      <div>
+        <div class="mb-2 flex items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold text-gray-900">Members</h3>
+          <span class="text-xs text-gray-500">{{ selectedGroupMembers().length }} selected</span>
+        </div>
+
+        @if (selectedGroupMembers().length > 0) {
+          <div class="flex flex-wrap gap-2">
+            @for (member of selectedGroupMembers(); track member.id) {
+              <button
+                type="button"
+                class="inline-flex max-w-full items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                [title]="'Remove ' + getCandidateFullName(member)"
+                [attr.aria-label]="'Remove ' + getCandidateFullName(member)"
+                (click)="removeGroupMember(member.id)"
+              >
+                <span class="truncate">{{ getCandidateFullName(member) }}</span>
+                <span aria-hidden="true">×</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500">
+            Select at least one member.
+          </p>
+        }
+      </div>
+
+      <div class="grid gap-3">
+        <input
+          type="text"
+          placeholder="Search members by username, name, or phone number..."
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+          [formField]="searchForm.content"
+        />
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="grid gap-1 text-xs font-medium text-gray-600">
+            Active from
+            <input
+              type="date"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+              [formField]="searchForm.lastActiveFrom"
+            />
+          </label>
+
+          <label class="grid gap-1 text-xs font-medium text-gray-600">
+            Active to
+            <input
+              type="date"
+              class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+              [formField]="searchForm.lastActiveTo"
+            />
+          </label>
+        </div>
+
+        <label class="grid gap-1 text-xs font-medium text-gray-600">
+          Profile photo
+          <select
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 outline-none focus:border-blue-500"
+            [formField]="searchForm.profilePicture"
+          >
+            <option value="ANY">Any</option>
+            <option value="SET">Set</option>
+            <option value="NOT_SET">Not set</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid max-h-[30rem] grid-rows-2 gap-4">
+        <section class="min-h-0 rounded-lg border border-gray-200">
+          <header class="border-b border-gray-100 px-3 py-2">
+            <h3 class="text-sm font-semibold text-gray-900">Contacts</h3>
+            <p class="text-xs text-gray-500">Users from your existing chats.</p>
+          </header>
+
+          <div class="max-h-52 overflow-y-auto p-2">
+            @if (filteredContactUsers().length === 0) {
+              <p class="py-6 text-center text-sm text-gray-500">No contacts match this search.</p>
+            }
+
+            @for (user of filteredContactUsers(); track user.id) {
+              <button
+                type="button"
+                class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition hover:bg-gray-100"
+                [class.bg-blue-50]="isGroupMemberSelected(user.id)"
+                (click)="toggleGroupMember(user)"
+              >
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 shrink-0 accent-blue-600"
+                  [checked]="isGroupMemberSelected(user.id)"
+                  tabindex="-1"
+                  aria-hidden="true"
+                />
+
+                <img
+                  [src]="user.pfpUrl"
+                  alt="Profile picture"
+                  class="h-10 w-10 rounded-full object-cover"
+                />
+
+                <div class="min-w-0">
+                  <p class="truncate font-medium">
+                    {{ getCandidateFullName(user) }}
+                    @if (user.phoneNumber) {
+                      <span class="font-normal text-gray-500">({{ user.phoneNumber }})</span>
+                    }
+                  </p>
+                  <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+                  <p class="truncate text-xs text-gray-400">
+                    {{ formatLastActive(user.lastActiveAt) }}
+                  </p>
+                </div>
+              </button>
+            }
+          </div>
+        </section>
+
+        <section class="min-h-0 rounded-lg border border-gray-200">
+          <header class="border-b border-gray-100 px-3 py-2">
+            <h3 class="text-sm font-semibold text-gray-900">New users</h3>
+            <p class="text-xs text-gray-500">Users you have not chatted with yet.</p>
+          </header>
+
+          <div class="max-h-52 overflow-y-auto p-2">
+            @if (!hasSearchCriteria()) {
+              <p class="py-6 text-center text-sm text-gray-500">
+                Search to add users outside your contacts.
+              </p>
+            }
+
+            @if (isSearching()) {
+              <p class="py-6 text-center text-sm text-gray-500">Searching...</p>
+            }
+
+            @if (hasSearchCriteria() && newUserSearchResults().length === 0 && !isSearching()) {
+              <p class="py-6 text-center text-sm text-gray-500">
+                No new users found matching your search.
+              </p>
+            }
+
+            @for (user of newUserSearchResults(); track user.id) {
+              <button
+                type="button"
+                class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition hover:bg-gray-100"
+                [class.bg-blue-50]="isGroupMemberSelected(user.id)"
+                (click)="toggleGroupMember(user)"
+              >
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 shrink-0 accent-blue-600"
+                  [checked]="isGroupMemberSelected(user.id)"
+                  tabindex="-1"
+                  aria-hidden="true"
+                />
+
+                <img
+                  [src]="user.pfpUrl"
+                  alt="Profile picture"
+                  class="h-10 w-10 rounded-full object-cover"
+                />
+
+                <div class="min-w-0">
+                  <p class="truncate font-medium">
+                    {{ getCandidateFullName(user) }}
+                    @if (user.phoneNumber) {
+                      <span class="font-normal text-gray-500">({{ user.phoneNumber }})</span>
+                    }
+                  </p>
+                  <p class="truncate text-sm text-gray-500">@{{ user.username }}</p>
+                  <p class="truncate text-xs text-gray-400">
+                    {{ formatLastActive(user.lastActiveAt) }}
+                  </p>
+                </div>
+              </button>
+            }
+          </div>
+        </section>
+      </div>
+
+      @if (groupCreateError()) {
+        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {{ groupCreateError() }}
+        </p>
+      }
+
+      <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+          (click)="closeNewGroupModal()"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="!canCreateGroup() || isCreatingGroup()"
+          (click)="createGroupChat()"
+        >
+          {{ isCreatingGroup() ? 'Creating...' : 'Create group' }}
+        </button>
+      </div>
     </div>
   </app-modal>
 }

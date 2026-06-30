@@ -11,6 +11,19 @@ import {
 } from '@shared/types/api.types';
 import { firstValueFrom, Observable } from 'rxjs';
 
+interface GroupChatRequest {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  memberIds: string[];
+}
+
+interface GroupChatUpdateRequest {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -24,11 +37,52 @@ export class ChatService {
     return firstValueFrom(
       this.http.post<Chat>(`${env.apiUrl}/chats`, {
         name: '',
+        description: '',
         imageUrl: '',
         memberIds: [recipientId],
         type: 'DIRECT',
       }),
     );
+  }
+
+  async createGroupChat(request: GroupChatRequest): Promise<Chat> {
+    return firstValueFrom(
+      this.http.post<Chat>(`${env.apiUrl}/chats`, {
+        name: request.name,
+        description: request.description ?? '',
+        imageUrl: request.imageUrl ?? '',
+        memberIds: request.memberIds,
+        type: 'GROUP',
+      }),
+    );
+  }
+
+  updateGroupChat(chatId: string, request: GroupChatUpdateRequest): Observable<Chat> {
+    return this.http.patch<Chat>(`${env.apiUrl}/chats/${chatId}/group`, {
+      name: request.name,
+      description: request.description ?? '',
+      imageUrl: request.imageUrl ?? '',
+    });
+  }
+
+  addGroupMembers(chatId: string, memberIds: string[]): Observable<Chat> {
+    return this.http.post<Chat>(`${env.apiUrl}/chats/${chatId}/members`, {
+      memberIds,
+    });
+  }
+
+  removeGroupMember(chatId: string, memberId: string): Observable<Chat> {
+    return this.http.delete<Chat>(`${env.apiUrl}/chats/${chatId}/members/${memberId}`);
+  }
+
+  updateGroupMemberRole(
+    chatId: string,
+    memberId: string,
+    role: 'ADMIN' | 'MEMBER',
+  ): Observable<Chat> {
+    return this.http.patch<Chat>(`${env.apiUrl}/chats/${chatId}/members/${memberId}/role`, {
+      role,
+    });
   }
 
   getMyChats() {
@@ -85,7 +139,7 @@ export class ChatService {
     const currentUser = this.userService.getLoggedInUser();
 
     if (chat.type === 'DIRECT') {
-      return chat.members.filter((m) => m.username !== currentUser.username)[0].pfpUrl;
+      return chat.members.filter((m) => m.username !== currentUser.username)[0]?.pfpUrl ?? '';
     }
     if (chat.type === 'GROUP') {
       return chat.imageUrl ? chat.imageUrl : '';
@@ -97,11 +151,7 @@ export class ChatService {
     const currentUser = this.userService.getLoggedInUser();
 
     if (chat.type === 'DIRECT') {
-      console.log('User', currentUser);
-
-      console.log(chat.members.filter((m) => m.username !== currentUser.username));
-
-      return chat.members.filter((m) => m.username !== currentUser.username)[0].fullName;
+      return chat.members.filter((m) => m.username !== currentUser.username)[0]?.fullName ?? 'Chat';
     }
     if (chat.type === 'GROUP') {
       return chat.name ? chat.name : 'Group Chat';

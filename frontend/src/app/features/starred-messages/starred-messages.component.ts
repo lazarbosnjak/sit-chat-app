@@ -63,6 +63,7 @@ export class StarredMessagesComponent {
       ...message,
       reactions: message.reactions ?? [],
       starredByMe: message.starredByMe ?? true,
+      systemMessage: message.systemMessage ?? false,
     };
   }
 }

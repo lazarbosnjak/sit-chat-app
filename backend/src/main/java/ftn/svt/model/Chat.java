@@ -27,6 +27,9 @@ public class Chat {
 
     private String name;
 
+    @Column(length = 500)
+    private String description;
+
     private String imageUrl;
 
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)

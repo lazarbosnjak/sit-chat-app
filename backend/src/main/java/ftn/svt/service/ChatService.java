@@ -2,8 +2,11 @@ package ftn.svt.service;
 
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.*;
+import ftn.svt.model.dto.chat.ChatMemberAddRequest;
+import ftn.svt.model.dto.chat.ChatMemberRoleUpdateRequest;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
+import ftn.svt.model.dto.chat.ChatUpdateRequest;
 import ftn.svt.model.dto.chat.MessageReactionSummaryResponse;
 import ftn.svt.model.dto.chat.MessageResponse;
 import ftn.svt.model.dto.chat.MessageStarUpdateResponse;
@@ -37,11 +40,16 @@ public class ChatService {
     public Chat create(ChatCreateRequest dto, Principal principal) {
         User initiator = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> ApiException.notFound("user not found"));
+        ChatType chatType = dto.type();
+
+        if (chatType == null) {
+            throw ApiException.badRequest("Chat type is required");
+        }
 
         Set<UUID> memberIds = new HashSet<>(dto.memberIds());
         memberIds.add(initiator.getId());
 
-        if (memberIds.size() > 2 && dto.type() == ChatType.DIRECT) {
+        if (memberIds.size() > 2 && chatType == ChatType.DIRECT) {
             throw ApiException.badRequest("Direct messages must have 2 members");
         }
 
@@ -49,21 +57,33 @@ public class ChatService {
             throw ApiException.badRequest("Chats must have at least 2 members");
         }
 
-        if (dto.type() == ChatType.DIRECT) {
-            chatRepository.findByExactMemberIds(memberIds, memberIds.size())
+        String name = normalizeOptionalText(dto.name());
+        String description = normalizeOptionalText(dto.description());
+        String imageUrl = normalizeOptionalText(dto.imageUrl());
+
+        if (chatType == ChatType.DIRECT) {
+            name = null;
+            description = null;
+            imageUrl = null;
+
+            chatRepository.findByTypeAndExactMemberIds(ChatType.DIRECT, memberIds, memberIds.size())
                     .ifPresent(existingChat -> {
                         throw ApiException.conflict("chat with these members exist");
                     });
         }
 
+        if (chatType == ChatType.GROUP && name == null) {
+            throw ApiException.badRequest("Group name is required");
+        }
 
         Chat chat = Chat.builder()
                 .id(null)
-                .name(dto.name())
-                .imageUrl(dto.imageUrl())
+                .name(name)
+                .description(description)
+                .imageUrl(imageUrl)
                 .members(new ArrayList<>())
                 .createdAt(null)
-                .type(dto.type())
+                .type(chatType)
                 .build();
 
         Chat savedChat = chatRepository.save(chat);
@@ -90,6 +110,171 @@ public class ChatService {
 
         return createdChat;
 
+    }
+
+    @Transactional
+    public Chat updateGroup(UUID chatId, ChatUpdateRequest dto, String username) {
+        if (dto == null) {
+            throw ApiException.badRequest("Group data is required");
+        }
+
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+        Chat chat = adminMember.getChat();
+        String name = normalizeOptionalText(dto.name());
+        String description = normalizeOptionalText(dto.description());
+        String imageUrl = normalizeOptionalText(dto.imageUrl());
+
+        if (name == null) {
+            throw ApiException.badRequest("Group name is required");
+        }
+
+        List<String> systemMessages = new ArrayList<>();
+        String actorName = adminMember.getUser().getFullName();
+
+        if (!Objects.equals(chat.getName(), name)) {
+            chat.setName(name);
+            systemMessages.add(actorName + " changed group name to \"" + name + "\".");
+        }
+
+        if (!Objects.equals(chat.getDescription(), description)) {
+            chat.setDescription(description);
+            systemMessages.add(description == null
+                    ? actorName + " removed group description."
+                    : actorName + " changed group description.");
+        }
+
+        if (!Objects.equals(chat.getImageUrl(), imageUrl)) {
+            chat.setImageUrl(imageUrl);
+            systemMessages.add(imageUrl == null
+                    ? actorName + " removed group image."
+                    : actorName + " changed group image.");
+        }
+
+        Chat savedChat = chatRepository.save(chat);
+        createSystemMessages(savedChat, adminMember, systemMessages);
+
+        return savedChat;
+    }
+
+    @Transactional
+    public Chat addGroupMembers(UUID chatId, ChatMemberAddRequest dto, String username) {
+        if (dto == null || dto.memberIds() == null || dto.memberIds().isEmpty()) {
+            throw ApiException.badRequest("Member ids are required");
+        }
+
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+        Chat chat = adminMember.getChat();
+        Set<UUID> memberIds = new HashSet<>(dto.memberIds());
+        Set<User> users = new HashSet<>(userRepository.findAllById(memberIds));
+
+        if (users.size() != memberIds.size()) {
+            throw ApiException.notFound("one or more users not found");
+        }
+
+        List<ChatMember> changedMembers = new ArrayList<>();
+        List<String> addedNames = new ArrayList<>();
+
+        for (User user : users) {
+            Optional<ChatMember> existingMember =
+                    chatMemberRepository.findByChatIdAndUserId(chatId, user.getId());
+
+            if (existingMember.isPresent()) {
+                ChatMember member = existingMember.get();
+
+                if (member.isActive()) {
+                    continue;
+                }
+
+                member.setActive(true);
+                member.setRole(ChatRole.MEMBER);
+                changedMembers.add(member);
+                addedNames.add(user.getFullName());
+                continue;
+            }
+
+            ChatMember member = ChatMember.builder()
+                    .chat(chat)
+                    .user(user)
+                    .role(ChatRole.MEMBER)
+                    .active(true)
+                    .build();
+
+            chat.getMembers().add(member);
+            changedMembers.add(member);
+            addedNames.add(user.getFullName());
+        }
+
+        if (changedMembers.isEmpty()) {
+            return chat;
+        }
+
+        chatMemberRepository.saveAll(changedMembers);
+        createSystemMessage(
+                chat,
+                adminMember,
+                adminMember.getUser().getFullName() + " added " + String.join(", ", addedNames) + "."
+        );
+
+        return chat;
+    }
+
+    @Transactional
+    public Chat removeGroupMember(UUID chatId, UUID memberId, String username) {
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+        ChatMember targetMember = getActiveGroupMember(chatId, memberId);
+
+        ensureNotRemovingLastAdmin(targetMember);
+
+        targetMember.setActive(false);
+        chatMemberRepository.save(targetMember);
+
+        createSystemMessage(
+                adminMember.getChat(),
+                adminMember,
+                adminMember.getUser().getFullName()
+                        + " removed "
+                        + targetMember.getUser().getFullName()
+                        + "."
+        );
+
+        return adminMember.getChat();
+    }
+
+    @Transactional
+    public Chat updateGroupMemberRole(
+            UUID chatId,
+            UUID memberId,
+            ChatMemberRoleUpdateRequest dto,
+            String username
+    ) {
+        if (dto == null || dto.role() == null) {
+            throw ApiException.badRequest("Role is required");
+        }
+
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+        ChatMember targetMember = getActiveGroupMember(chatId, memberId);
+
+        if (targetMember.getRole() == dto.role()) {
+            return adminMember.getChat();
+        }
+
+        if (targetMember.getRole() == ChatRole.ADMIN && dto.role() == ChatRole.MEMBER) {
+            ensureNotRemovingLastAdmin(targetMember);
+        }
+
+        targetMember.setRole(dto.role());
+        chatMemberRepository.save(targetMember);
+
+        createSystemMessage(
+                adminMember.getChat(),
+                adminMember,
+                adminMember.getUser().getFullName()
+                        + (dto.role() == ChatRole.ADMIN ? " promoted " : " demoted ")
+                        + targetMember.getUser().getFullName()
+                        + "."
+        );
+
+        return adminMember.getChat();
     }
 
     public Collection<ChatInfoResponse> getAllByPrincipal(Principal principal) {
@@ -195,7 +380,7 @@ public class ChatService {
         }
 
         ChatMember senderMember = chatMemberRepository
-                .findByChatIdAndUserUsername(chatId, senderUsername)
+                .findByChatIdAndUserUsernameAndActiveTrue(chatId, senderUsername)
                 .orElseThrow(() -> ApiException.forbidden("You are not a member of this chat"));
 
         Chat chat = senderMember.getChat();
@@ -217,7 +402,7 @@ public class ChatService {
 
         Message savedMessage = messageRepository.save(message);
 
-        List<ChatMember> recipients = chatMemberRepository.findAllByChatId(chatId);
+        List<ChatMember> recipients = chatMemberRepository.findAllByChatIdAndActiveTrue(chatId);
 
         Instant now = Instant.now();
 
@@ -257,7 +442,7 @@ public class ChatService {
             throw ApiException.badRequest("Message must belong to the selected chat");
         }
 
-        boolean canAccessChat = chatRepository.existsByIdAndMembersUserUsername(chatId, username);
+        boolean canAccessChat = chatRepository.existsActiveByIdAndMemberUsername(chatId, username);
 
         if (!canAccessChat) {
             throw ApiException.forbidden("You are not a member of this chat");
@@ -287,6 +472,17 @@ public class ChatService {
 
         List<StarredMessage> starredMessages =
                 starredMessageRepository.findAllByUserUsernameOrderByCreatedAtDesc(username);
+
+        if (starredMessages.isEmpty()) {
+            return List.of();
+        }
+
+        starredMessages = starredMessages.stream()
+                .filter(starredMessage -> chatRepository.existsActiveByIdAndMemberUsername(
+                        starredMessage.getMessage().getChat().getId(),
+                        username
+                ))
+                .toList();
 
         if (starredMessages.isEmpty()) {
             return List.of();
@@ -349,7 +545,7 @@ public class ChatService {
 
         UUID chatId = message.getChat().getId();
         ChatMember reactorMember = chatMemberRepository
-                .findByChatIdAndUserUsername(chatId, username)
+                .findByChatIdAndUserUsernameAndActiveTrue(chatId, username)
                 .orElseThrow(() -> ApiException.forbidden("You are not a member of this chat"));
 
         Optional<MessageReaction> existingReaction =
@@ -407,6 +603,96 @@ public class ChatService {
         return chatMemberRepository.findUsernamesByChatId(chatId);
     }
 
+    private ChatMember getGroupAdminMember(UUID chatId, String username) {
+        ChatMember member = chatMemberRepository
+                .findByChatIdAndUserUsernameAndActiveTrue(chatId, username)
+                .orElseThrow(() -> ApiException.forbidden("You are not a member of this chat"));
+
+        if (member.getChat().getType() != ChatType.GROUP) {
+            throw ApiException.badRequest("This operation is only available for group chats");
+        }
+
+        if (member.getRole() != ChatRole.ADMIN) {
+            throw ApiException.forbidden("Only group admins can manage this group");
+        }
+
+        return member;
+    }
+
+    private ChatMember getActiveGroupMember(UUID chatId, UUID memberId) {
+        if (memberId == null) {
+            throw ApiException.badRequest("Member id is required");
+        }
+
+        ChatMember member = chatMemberRepository
+                .findByIdAndChatIdAndActiveTrue(memberId, chatId)
+                .orElseThrow(() -> ApiException.notFound("Group member not found"));
+
+        if (member.getChat().getType() != ChatType.GROUP) {
+            throw ApiException.badRequest("This operation is only available for group chats");
+        }
+
+        return member;
+    }
+
+    private void ensureNotRemovingLastAdmin(ChatMember targetMember) {
+        if (targetMember.getRole() != ChatRole.ADMIN) {
+            return;
+        }
+
+        long activeAdminCount = chatMemberRepository.countByChatIdAndRoleAndActiveTrue(
+                targetMember.getChat().getId(),
+                ChatRole.ADMIN
+        );
+
+        if (activeAdminCount <= 1) {
+            throw ApiException.badRequest("Group must have at least one admin");
+        }
+    }
+
+    private void createSystemMessages(Chat chat, ChatMember actor, List<String> contents) {
+        contents.stream()
+                .filter(content -> content != null && !content.isBlank())
+                .forEach(content -> createSystemMessage(chat, actor, content));
+    }
+
+    private MessageResponse createSystemMessage(Chat chat, ChatMember actor, String content) {
+        String normalizedContent = normalizeOptionalText(content);
+
+        if (normalizedContent == null) {
+            throw ApiException.badRequest("System message content cannot be empty");
+        }
+
+        Message message = Message.builder()
+                .chat(chat)
+                .sender(actor)
+                .content(normalizedContent)
+                .systemMessage(true)
+                .build();
+
+        Message savedMessage = messageRepository.save(message);
+        List<ChatMember> recipients = chatMemberRepository.findAllByChatIdAndActiveTrue(chat.getId());
+        Instant now = Instant.now();
+
+        List<MessageReceipt> receipts = recipients.stream()
+                .map(recipient -> {
+                    boolean isActor = recipient.getId().equals(actor.getId());
+
+                    return MessageReceipt.builder()
+                            .message(savedMessage)
+                            .recipient(recipient)
+                            .status(isActor ? ReceiptStatus.READ : ReceiptStatus.SENT)
+                            .deliveredAt(isActor ? now : null)
+                            .readAt(isActor ? now : null)
+                            .build();
+                })
+                .toList();
+
+        messageReceiptRepository.saveAll(receipts);
+
+        return MessageResponse.from(savedMessage, getDeliveryStatus(receipts), List.of());
+    }
+
     private Message getReplyToMessage(UUID replyToMessageId, UUID chatId) {
         if (replyToMessageId == null) {
             return null;
@@ -430,7 +716,7 @@ public class ChatService {
         Message forwardedFrom = messageRepository.findById(forwardedFromMessageId)
                 .orElseThrow(() -> ApiException.notFound("Forwarded message with this id does not exist"));
 
-        boolean canAccessSourceChat = chatRepository.existsByIdAndMembersUserUsername(
+        boolean canAccessSourceChat = chatRepository.existsActiveByIdAndMemberUsername(
                 forwardedFrom.getChat().getId(),
                 senderUsername
         );
@@ -450,6 +736,14 @@ public class ChatService {
         }
 
         return normalizedContent;
+    }
+
+    private String normalizeOptionalText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        return text.trim();
     }
 
     private List<MessageStatusResponse> getStatusUpdatesForMessages(Collection<UUID> messageIds) {

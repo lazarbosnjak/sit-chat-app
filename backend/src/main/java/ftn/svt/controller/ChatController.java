@@ -4,8 +4,11 @@ import ftn.svt.config.security.ChatSecurity;
 import ftn.svt.model.Chat;
 import ftn.svt.model.MessageReceipt;
 import ftn.svt.model.dto.chat.ChatEventResponse;
+import ftn.svt.model.dto.chat.ChatMemberAddRequest;
+import ftn.svt.model.dto.chat.ChatMemberRoleUpdateRequest;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
+import ftn.svt.model.dto.chat.ChatUpdateRequest;
 import ftn.svt.model.dto.chat.MessageReceiptResponse;
 import ftn.svt.model.dto.chat.MessageStarUpdateResponse;
 import ftn.svt.model.dto.chat.MessageStatusResponse;
@@ -137,5 +140,58 @@ public class ChatController {
         }
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @PatchMapping("/{chatId}/group")
+    public ResponseEntity<?> updateGroup(
+            @PathVariable UUID chatId,
+            @Valid @RequestBody ChatUpdateRequest dto,
+            Principal principal
+    ) {
+        Chat chat = chatService.updateGroup(chatId, dto, principal.getName());
+        var res = ChatInfoResponse.from(chat, chatService.getUnreadCount(chatId, principal.getName()));
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @PostMapping("/{chatId}/members")
+    public ResponseEntity<?> addGroupMembers(
+            @PathVariable UUID chatId,
+            @Valid @RequestBody ChatMemberAddRequest dto,
+            Principal principal
+    ) {
+        Chat chat = chatService.addGroupMembers(chatId, dto, principal.getName());
+        var res = ChatInfoResponse.from(chat, chatService.getUnreadCount(chatId, principal.getName()));
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @DeleteMapping("/{chatId}/members/{memberId}")
+    public ResponseEntity<?> removeGroupMember(
+            @PathVariable UUID chatId,
+            @PathVariable UUID memberId,
+            Principal principal
+    ) {
+        Chat chat = chatService.removeGroupMember(chatId, memberId, principal.getName());
+        var res = ChatInfoResponse.from(chat, chatService.getUnreadCount(chatId, principal.getName()));
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @PatchMapping("/{chatId}/members/{memberId}/role")
+    public ResponseEntity<?> updateGroupMemberRole(
+            @PathVariable UUID chatId,
+            @PathVariable UUID memberId,
+            @Valid @RequestBody ChatMemberRoleUpdateRequest dto,
+            Principal principal
+    ) {
+        Chat chat = chatService.updateGroupMemberRole(chatId, memberId, dto, principal.getName());
+        var res = ChatInfoResponse.from(chat, chatService.getUnreadCount(chatId, principal.getName()));
+
+        return ResponseEntity.ok(res);
     }
 }

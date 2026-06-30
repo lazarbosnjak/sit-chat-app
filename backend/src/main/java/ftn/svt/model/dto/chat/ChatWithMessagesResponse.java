@@ -10,6 +10,7 @@ import java.util.UUID;
 public record ChatWithMessagesResponse(
         UUID id,
         String name,
+        String description,
         String imageUrl,
         ChatType type,
         Instant createdAt,
