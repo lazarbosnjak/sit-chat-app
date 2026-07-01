@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ public class RegistrationRequestFormService {
 
     private final RegistrationRequestFormRepository formRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     public Page<RegistrationResponse> findAll(Pageable pageable) {
         return formRepository
@@ -28,6 +30,7 @@ public class RegistrationRequestFormService {
                 .map(RegistrationResponse::from);
     }
 
+    @Transactional
     public void approve(UUID id) {
         RegistrationRequestForm form = formRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("registration request with this id not found"));
@@ -52,9 +55,11 @@ public class RegistrationRequestFormService {
                 .createdAt(null)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        emailService.sendRegistrationApprovedEmail(savedUser);
     }
 
+    @Transactional
     public void reject(UUID id) {
         RegistrationRequestForm form = formRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("registration request with this id not found"));

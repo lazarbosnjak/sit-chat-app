@@ -1,6 +1,8 @@
 package ftn.svt.controller;
 
 import ftn.svt.model.dto.auth.LoginRequest;
+import ftn.svt.model.dto.auth.PasswordResetConfirmRequest;
+import ftn.svt.model.dto.auth.PasswordResetRequest;
 import ftn.svt.model.dto.auth.RegistrationRequest;
 import ftn.svt.service.AuthService;
 import jakarta.validation.Valid;
@@ -36,5 +38,15 @@ public class AuthController {
         } catch (UsernameNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<?> requestPasswordReset(@RequestBody @Valid PasswordResetRequest dto) {
+        return ResponseEntity.ok(authService.requestPasswordReset(dto));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<?> resetPassword(@RequestBody @Valid PasswordResetConfirmRequest dto) {
+        return ResponseEntity.ok(authService.resetPassword(dto));
     }
 }
