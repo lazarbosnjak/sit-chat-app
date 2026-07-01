@@ -72,6 +72,8 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
             """)
     Collection<Chat> findAllWithUserId(UUID id);
 
+    Optional<Chat> findByInviteToken(String inviteToken);
+
     @Query("""
             select case when count(c) > 0 then true else false end
             from Chat c

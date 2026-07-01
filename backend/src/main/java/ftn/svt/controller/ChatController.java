@@ -8,6 +8,7 @@ import ftn.svt.model.dto.chat.ChatMemberAddRequest;
 import ftn.svt.model.dto.chat.ChatMemberRoleUpdateRequest;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
+import ftn.svt.model.dto.chat.ChatInviteLinkResponse;
 import ftn.svt.model.dto.chat.ChatUpdateRequest;
 import ftn.svt.model.dto.chat.MessageReceiptResponse;
 import ftn.svt.model.dto.chat.MessageStarUpdateResponse;
@@ -191,6 +192,53 @@ public class ChatController {
     ) {
         Chat chat = chatService.updateGroupMemberRole(chatId, memberId, dto, principal.getName());
         var res = ChatInfoResponse.from(chat, chatService.getUnreadCount(chatId, principal.getName()));
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @GetMapping("/{chatId}/invite-link")
+    public ResponseEntity<?> getGroupInviteLink(
+            @PathVariable UUID chatId,
+            Principal principal
+    ) {
+        ChatInviteLinkResponse res = chatService.getGroupInviteLink(chatId, principal.getName());
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @PostMapping("/{chatId}/invite-link")
+    public ResponseEntity<?> generateGroupInviteLink(
+            @PathVariable UUID chatId,
+            Principal principal
+    ) {
+        ChatInviteLinkResponse res = chatService.generateGroupInviteLink(chatId, principal.getName());
+
+        return ResponseEntity.ok(res);
+    }
+
+    @PreAuthorize("@chatSecurity.canManageGroup(authentication, #chatId)")
+    @DeleteMapping("/{chatId}/invite-link")
+    public ResponseEntity<?> revokeGroupInviteLink(
+            @PathVariable UUID chatId,
+            Principal principal
+    ) {
+        chatService.revokeGroupInviteLink(chatId, principal.getName());
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/invite-links/{token}/join")
+    public ResponseEntity<?> joinGroupByInviteLink(
+            @PathVariable String token,
+            Principal principal
+    ) {
+        Chat chat = chatService.joinGroupByInviteToken(token, principal.getName());
+        var res = ChatInfoResponse.from(
+                chat,
+                chatService.getUnreadCount(chat.getId(), principal.getName())
+        );
 
         return ResponseEntity.ok(res);
     }

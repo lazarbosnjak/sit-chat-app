@@ -6,6 +6,7 @@ import ftn.svt.model.dto.chat.ChatMemberAddRequest;
 import ftn.svt.model.dto.chat.ChatMemberRoleUpdateRequest;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
 import ftn.svt.model.dto.chat.ChatInfoResponse;
+import ftn.svt.model.dto.chat.ChatInviteLinkResponse;
 import ftn.svt.model.dto.chat.ChatUpdateRequest;
 import ftn.svt.model.dto.chat.MessageReactionSummaryResponse;
 import ftn.svt.model.dto.chat.MessageResponse;
@@ -275,6 +276,88 @@ public class ChatService {
         );
 
         return adminMember.getChat();
+    }
+
+    @Transactional(readOnly = true)
+    public ChatInviteLinkResponse getGroupInviteLink(UUID chatId, String username) {
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+
+        return ChatInviteLinkResponse.from(adminMember.getChat());
+    }
+
+    @Transactional
+    public ChatInviteLinkResponse generateGroupInviteLink(UUID chatId, String username) {
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+        Chat chat = adminMember.getChat();
+
+        chat.setInviteToken(generateUniqueInviteToken());
+        chat.setInviteTokenCreatedAt(Instant.now());
+
+        return ChatInviteLinkResponse.from(chatRepository.save(chat));
+    }
+
+    @Transactional
+    public void revokeGroupInviteLink(UUID chatId, String username) {
+        ChatMember adminMember = getGroupAdminMember(chatId, username);
+        Chat chat = adminMember.getChat();
+
+        chat.setInviteToken(null);
+        chat.setInviteTokenCreatedAt(null);
+        chatRepository.save(chat);
+    }
+
+    @Transactional
+    public Chat joinGroupByInviteToken(String token, String username) {
+        String normalizedToken = normalizeOptionalText(token);
+
+        if (normalizedToken == null) {
+            throw ApiException.badRequest("Invite token is required");
+        }
+
+        Chat chat = chatRepository.findByInviteToken(normalizedToken)
+                .orElseThrow(() -> ApiException.notFound("Invite link is invalid or revoked"));
+
+        if (chat.getType() != ChatType.GROUP) {
+            throw ApiException.badRequest("Invite links are only available for group chats");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
+
+        if (!user.isEnabled()) {
+            throw ApiException.forbidden("Blocked users cannot join groups");
+        }
+
+        Optional<ChatMember> existingMember =
+                chatMemberRepository.findByChatIdAndUserId(chat.getId(), user.getId());
+
+        if (existingMember.isPresent()) {
+            ChatMember member = existingMember.get();
+
+            if (member.isActive()) {
+                return chat;
+            }
+
+            member.setActive(true);
+            member.setRole(ChatRole.MEMBER);
+            chatMemberRepository.save(member);
+
+            createSystemMessage(chat, member, user.getFullName() + " joined using an invite link.");
+            return chat;
+        }
+
+        ChatMember member = ChatMember.builder()
+                .chat(chat)
+                .user(user)
+                .role(ChatRole.MEMBER)
+                .active(true)
+                .build();
+
+        chat.getMembers().add(member);
+        ChatMember savedMember = chatMemberRepository.save(member);
+
+        createSystemMessage(chat, savedMember, user.getFullName() + " joined using an invite link.");
+        return chat;
     }
 
     public Collection<ChatInfoResponse> getAllByPrincipal(Principal principal) {
@@ -744,6 +827,18 @@ public class ChatService {
         }
 
         return text.trim();
+    }
+
+    private String generateUniqueInviteToken() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String token = UUID.randomUUID().toString();
+
+            if (chatRepository.findByInviteToken(token).isEmpty()) {
+                return token;
+            }
+        }
+
+        throw ApiException.conflict("Could not generate invite link");
     }
 
     private List<MessageStatusResponse> getStatusUpdatesForMessages(Collection<UUID> messageIds) {

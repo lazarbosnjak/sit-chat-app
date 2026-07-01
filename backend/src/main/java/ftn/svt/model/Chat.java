@@ -32,6 +32,11 @@ public class Chat {
 
     private String imageUrl;
 
+    @Column(unique = true)
+    private String inviteToken;
+
+    private Instant inviteTokenCreatedAt;
+
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMember> members = new ArrayList<>();
 

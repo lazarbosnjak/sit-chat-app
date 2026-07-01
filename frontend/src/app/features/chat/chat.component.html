@@ -514,6 +514,94 @@
           }
         </section>
 
+        @if (isCurrentUserGroupAdmin()) {
+          <section class="grid gap-3 border-t border-gray-100 pt-4">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-sm font-semibold text-gray-900">Invite link</h3>
+
+              @if (groupInviteGeneratedAt()) {
+                <span class="text-xs text-gray-500">
+                  {{ formatInviteGeneratedAt(groupInviteGeneratedAt()) }}
+                </span>
+              }
+            </div>
+
+            @if (isLoadingGroupInvite()) {
+              <p class="rounded-lg border border-gray-200 px-3 py-3 text-sm text-gray-500">
+                Loading invite link...
+              </p>
+            } @else if (groupInviteToken()) {
+              <div class="flex min-w-0 gap-2">
+                <div
+                  class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2"
+                >
+                  <svg lucideLink class="h-4 w-4 shrink-0 text-gray-500"></svg>
+                  <input
+                    type="text"
+                    readonly
+                    class="min-w-0 flex-1 bg-transparent text-sm text-gray-700 outline-none"
+                    [value]="getGroupInviteUrl()"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-100"
+                  [title]="groupInviteCopied() ? 'Copied' : 'Copy invite link'"
+                  [attr.aria-label]="groupInviteCopied() ? 'Copied' : 'Copy invite link'"
+                  (click)="copyGroupInviteLink()"
+                >
+                  <svg lucideCopy class="h-4 w-4"></svg>
+                </button>
+              </div>
+
+              <div class="flex justify-end gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="isGeneratingGroupInvite() || isRevokingGroupInvite()"
+                  (click)="generateGroupInviteLink()"
+                >
+                  <svg lucideRefreshCw class="h-4 w-4"></svg>
+                  {{ isGeneratingGroupInvite() ? 'Generating...' : 'New link' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="isGeneratingGroupInvite() || isRevokingGroupInvite()"
+                  (click)="revokeGroupInviteLink()"
+                >
+                  <svg lucideTrash2 class="h-4 w-4"></svg>
+                  {{ isRevokingGroupInvite() ? 'Revoking...' : 'Revoke' }}
+                </button>
+              </div>
+            } @else {
+              <div
+                class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-3"
+              >
+                <p class="text-sm text-gray-500">No active invite link.</p>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="isGeneratingGroupInvite()"
+                  (click)="generateGroupInviteLink()"
+                >
+                  <svg lucideLink class="h-4 w-4"></svg>
+                  {{ isGeneratingGroupInvite() ? 'Generating...' : 'Generate link' }}
+                </button>
+              </div>
+            }
+
+            @if (groupInviteError()) {
+              <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {{ groupInviteError() }}
+              </p>
+            }
+          </section>
+        }
+
         <section class="grid gap-3 border-t border-gray-100 pt-4">
           <div class="flex items-center justify-between gap-3">
             <h3 class="text-sm font-semibold text-gray-900">Members</h3>

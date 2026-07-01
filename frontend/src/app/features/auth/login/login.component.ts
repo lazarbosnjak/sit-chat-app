@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment as env } from '@environments/environment';
 import { ModalComponent } from '@shared/components/modal/modal.component';
@@ -13,6 +13,7 @@ import { ModalComponent } from '@shared/components/modal/modal.component';
 export class LoginComponent {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
   loginError = signal<string | null>(null);
 
   loginForm = new FormGroup({
@@ -27,7 +28,9 @@ export class LoginComponent {
       })
       .subscribe({
         next: async (res) => {
-          this.authService.login(res);
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/';
+
+          await this.authService.login(res, returnUrl);
         },
         error: (err) => {
           this.loginError.set(this.getLoginErrorMessage(err));

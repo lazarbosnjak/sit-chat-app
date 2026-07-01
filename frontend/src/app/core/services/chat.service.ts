@@ -4,6 +4,7 @@ import { UserService } from '@core/services/user.service';
 import { environment as env } from '@environments/environment';
 import {
   Chat,
+  ChatInviteLink,
   Message,
   MessageReceipt,
   MessageStarUpdate,
@@ -83,6 +84,22 @@ export class ChatService {
     return this.http.patch<Chat>(`${env.apiUrl}/chats/${chatId}/members/${memberId}/role`, {
       role,
     });
+  }
+
+  getGroupInviteLink(chatId: string): Observable<ChatInviteLink> {
+    return this.http.get<ChatInviteLink>(`${env.apiUrl}/chats/${chatId}/invite-link`);
+  }
+
+  generateGroupInviteLink(chatId: string): Observable<ChatInviteLink> {
+    return this.http.post<ChatInviteLink>(`${env.apiUrl}/chats/${chatId}/invite-link`, {});
+  }
+
+  revokeGroupInviteLink(chatId: string): Observable<void> {
+    return this.http.delete<void>(`${env.apiUrl}/chats/${chatId}/invite-link`);
+  }
+
+  joinGroupByInviteToken(token: string): Observable<Chat> {
+    return this.http.post<Chat>(`${env.apiUrl}/chats/invite-links/${token}/join`, {});
   }
 
   getMyChats() {

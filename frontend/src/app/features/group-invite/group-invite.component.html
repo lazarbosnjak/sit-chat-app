@@ -1,0 +1,42 @@
+<div class="flex h-screen items-center justify-center bg-gray-100 p-6 text-gray-900">
+  <main class="grid w-full max-w-md gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    @if (status() === 'joining') {
+      <div class="grid gap-2 text-center">
+        <h1 class="text-xl font-semibold">Joining group...</h1>
+        <p class="text-sm text-gray-500">Please wait.</p>
+      </div>
+    } @else if (status() === 'joined') {
+      <div class="grid gap-4 text-center">
+        <div>
+          <h1 class="text-xl font-semibold">Joined group</h1>
+          <p class="mt-1 text-sm text-gray-500">
+            {{ joinedChat()?.name || 'Group chat' }}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          (click)="openJoinedChat()"
+        >
+          Open chat
+        </button>
+      </div>
+    } @else {
+      <div class="grid gap-4 text-center">
+        <div>
+          <h1 class="text-xl font-semibold">Could not join group</h1>
+          <p class="mt-1 text-sm text-red-600">{{ error() }}</p>
+        </div>
+
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+          (click)="goHome()"
+        >
+          Back to home
+        </button>
+      </div>
+    }
+  </main>
+</div>

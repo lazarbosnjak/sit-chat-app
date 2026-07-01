@@ -57,6 +57,12 @@ export interface Chat {
   unreadCount: number;
 }
 
+export interface ChatInviteLink {
+  chatId: string;
+  token?: string | null;
+  generatedAt?: Date | string | null;
+}
+
 export interface ChatMember {
   memberId: string;
   userId: string;

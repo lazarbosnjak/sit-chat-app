@@ -34,10 +34,14 @@ import {
   User,
 } from '@shared/types/api.types';
 import {
+  LucideCopy,
   LucideForward,
+  LucideLink,
+  LucideRefreshCw,
   LucideReply,
   LucideSend,
   LucideStar,
+  LucideTrash2,
   LucideUsers,
   LucideX,
 } from '@lucide/angular';
@@ -78,10 +82,14 @@ const EMPTY_GROUP_SETTINGS_MODEL: GroupSettingsModel = {
     ModalComponent,
     FormRoot,
     FormField,
+    LucideCopy,
     LucideForward,
+    LucideLink,
+    LucideRefreshCw,
     LucideReply,
     LucideSend,
     LucideStar,
+    LucideTrash2,
     LucideUsers,
     LucideX,
   ],
@@ -177,6 +185,13 @@ export class ChatComponent {
   isUpdatingGroupMember = signal(false);
   isSearchingGroupMembers = signal(false);
   groupMemberSearchResults = signal<User[]>([]);
+  groupInviteToken = signal<string | null>(null);
+  groupInviteGeneratedAt = signal<Date | string | null>(null);
+  groupInviteError = signal<string | null>(null);
+  isLoadingGroupInvite = signal(false);
+  isGeneratingGroupInvite = signal(false);
+  isRevokingGroupInvite = signal(false);
+  groupInviteCopied = signal(false);
 
   groupSettingsModel = signal<GroupSettingsModel>({ ...EMPTY_GROUP_SETTINGS_MODEL });
   groupSettingsForm = form(this.groupSettingsModel);
@@ -377,12 +392,23 @@ export class ChatComponent {
     this.groupSettingsError.set(null);
     this.addGroupMemberError.set(null);
     this.isGroupSettingsModalOpen.set(true);
+
+    if (this.isCurrentUserGroupAdmin()) {
+      this.loadGroupInviteLink(chat.id);
+    }
   }
 
   closeGroupSettingsModal(): void {
     this.isGroupSettingsModalOpen.set(false);
     this.groupSettingsError.set(null);
     this.addGroupMemberError.set(null);
+    this.groupInviteError.set(null);
+    this.groupInviteToken.set(null);
+    this.groupInviteGeneratedAt.set(null);
+    this.groupInviteCopied.set(false);
+    this.isLoadingGroupInvite.set(false);
+    this.isGeneratingGroupInvite.set(false);
+    this.isRevokingGroupInvite.set(false);
     this.groupMemberSearchModel.set({ content: '' });
     this.groupMemberSearchResults.set([]);
     this.isSearchingGroupMembers.set(false);
@@ -418,6 +444,131 @@ export class ChatComponent {
           this.isSavingGroupSettings.set(false);
         },
       });
+  }
+
+  loadGroupInviteLink(chatId: string): void {
+    this.isLoadingGroupInvite.set(true);
+    this.groupInviteError.set(null);
+
+    this.chatService
+      .getGroupInviteLink(chatId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (inviteLink) => {
+          this.groupInviteToken.set(inviteLink.token ?? null);
+          this.groupInviteGeneratedAt.set(inviteLink.generatedAt ?? null);
+          this.isLoadingGroupInvite.set(false);
+        },
+        error: (err) => {
+          console.error('Could not load invite link', err);
+          this.groupInviteError.set(this.getErrorMessage(err, 'Could not load invite link.'));
+          this.isLoadingGroupInvite.set(false);
+        },
+      });
+  }
+
+  generateGroupInviteLink(): void {
+    const chat = this.chat();
+
+    if (!chat || chat.type !== 'GROUP' || !this.isCurrentUserGroupAdmin()) {
+      return;
+    }
+
+    this.isGeneratingGroupInvite.set(true);
+    this.groupInviteError.set(null);
+    this.groupInviteCopied.set(false);
+
+    this.chatService
+      .generateGroupInviteLink(chat.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (inviteLink) => {
+          this.groupInviteToken.set(inviteLink.token ?? null);
+          this.groupInviteGeneratedAt.set(inviteLink.generatedAt ?? null);
+          this.isGeneratingGroupInvite.set(false);
+        },
+        error: (err) => {
+          console.error('Could not generate invite link', err);
+          this.groupInviteError.set(this.getErrorMessage(err, 'Could not generate invite link.'));
+          this.isGeneratingGroupInvite.set(false);
+        },
+      });
+  }
+
+  revokeGroupInviteLink(): void {
+    const chat = this.chat();
+
+    if (
+      !chat ||
+      chat.type !== 'GROUP' ||
+      !this.isCurrentUserGroupAdmin() ||
+      !this.groupInviteToken()
+    ) {
+      return;
+    }
+
+    this.isRevokingGroupInvite.set(true);
+    this.groupInviteError.set(null);
+    this.groupInviteCopied.set(false);
+
+    this.chatService
+      .revokeGroupInviteLink(chat.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.groupInviteToken.set(null);
+          this.groupInviteGeneratedAt.set(null);
+          this.isRevokingGroupInvite.set(false);
+        },
+        error: (err) => {
+          console.error('Could not revoke invite link', err);
+          this.groupInviteError.set(this.getErrorMessage(err, 'Could not revoke invite link.'));
+          this.isRevokingGroupInvite.set(false);
+        },
+      });
+  }
+
+  copyGroupInviteLink(): void {
+    const inviteUrl = this.getGroupInviteUrl();
+
+    if (!inviteUrl) {
+      return;
+    }
+
+    if (!navigator.clipboard) {
+      this.groupInviteError.set('Could not copy invite link.');
+      return;
+    }
+
+    navigator.clipboard
+      .writeText(inviteUrl)
+      .then(() => {
+        this.groupInviteError.set(null);
+        this.groupInviteCopied.set(true);
+        setTimeout(() => this.groupInviteCopied.set(false), 1500);
+      })
+      .catch((err) => {
+        console.error('Could not copy invite link', err);
+        this.groupInviteError.set('Could not copy invite link.');
+      });
+  }
+
+  getGroupInviteUrl(): string {
+    const token = this.groupInviteToken();
+
+    if (!token) {
+      return '';
+    }
+
+    return `${window.location.origin}/invite/${encodeURIComponent(token)}`;
+  }
+
+  formatInviteGeneratedAt(value: Date | string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    return formatDate(new Date(value), 'dd.MM.yyyy. HH:mm', 'en-US');
   }
 
   addGroupMember(user: AddableGroupMember): void {

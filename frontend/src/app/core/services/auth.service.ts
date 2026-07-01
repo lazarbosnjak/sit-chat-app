@@ -52,10 +52,10 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
   }
 
-  async login(res: string) {
+  async login(res: string, returnUrl = '/') {
     localStorage.setItem(TOKEN_KEY, res);
     await this.userService.setUserToLocalStorage();
-    this.router.navigate(['/']);
+    await this.router.navigateByUrl(this.getSafeReturnUrl(returnUrl));
   }
 
   async logout(): Promise<void> {
@@ -72,5 +72,13 @@ export class AuthService {
     }
     const payload = jwtDecode<JwtPayload>(token);
     return payload.role.authority === role.toLocaleUpperCase();
+  }
+
+  private getSafeReturnUrl(returnUrl: string): string {
+    if (!returnUrl.startsWith('/') || returnUrl.startsWith('//')) {
+      return '/';
+    }
+
+    return returnUrl;
   }
 }
