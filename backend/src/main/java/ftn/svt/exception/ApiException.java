@@ -33,4 +33,8 @@ public class ApiException extends RuntimeException {
        return new ApiException(message, HttpStatus.NOT_FOUND);
     }
 
+    public static ApiException badGateway(String message) {
+        return new ApiException(message, HttpStatus.BAD_GATEWAY);
+    }
+
 }

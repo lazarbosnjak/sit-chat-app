@@ -11,6 +11,7 @@ import ftn.svt.model.dto.chat.ChatInfoResponse;
 import ftn.svt.model.dto.chat.ChatInviteLinkResponse;
 import ftn.svt.model.dto.chat.ChatUpdateRequest;
 import ftn.svt.model.dto.chat.MessageReceiptResponse;
+import ftn.svt.model.dto.chat.MessageResponse;
 import ftn.svt.model.dto.chat.MessageStarUpdateResponse;
 import ftn.svt.model.dto.chat.MessageStatusResponse;
 import ftn.svt.model.dto.chat.StarredMessageResponse;
@@ -18,10 +19,12 @@ import ftn.svt.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.Collection;
@@ -82,6 +85,31 @@ public class ChatController {
             Principal principal
     ) {
         return ResponseEntity.ok(chatService.getMessagesByChatId(chatId, principal.getName()));
+    }
+
+    @PreAuthorize("@chatSecurity.canAccessChat(authentication, #chatId)")
+    @PostMapping(
+            value = "/{chatId}/voice-messages",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<?> sendVoiceMessage(
+            @PathVariable UUID chatId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("durationMs") int durationMs,
+            @RequestParam(value = "replyToMessageId", required = false) UUID replyToMessageId,
+            Principal principal
+    ) {
+        MessageResponse savedMessage = chatService.sendVoiceMessage(
+                principal.getName(),
+                chatId,
+                file,
+                durationMs,
+                replyToMessageId
+        );
+
+        broadcastMessageCreatedAndDelivered(chatId, savedMessage);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedMessage);
     }
 
     @PreAuthorize("@chatSecurity.canAccessChat(authentication, #chatId)")
@@ -241,5 +269,50 @@ public class ChatController {
         );
 
         return ResponseEntity.ok(res);
+    }
+
+    private void broadcastMessageCreatedAndDelivered(UUID chatId, MessageResponse savedMessage) {
+        Collection<String> memberUsernames = chatService.getChatMemberUsernames(chatId);
+
+        for (String username : memberUsernames) {
+            long unreadCount = chatService.getUnreadCount(chatId, username);
+            ChatEventResponse event = new ChatEventResponse(
+                    "MESSAGE_CREATED",
+                    chatId,
+                    savedMessage,
+                    unreadCount,
+                    List.of()
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/chat-events",
+                    event
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/messages",
+                    savedMessage
+            );
+        }
+
+        MessageStatusResponse deliveredStatus = chatService.markMessageAsDelivered(savedMessage.id());
+
+        for (String username : memberUsernames) {
+            ChatEventResponse event = new ChatEventResponse(
+                    "MESSAGE_STATUSES_UPDATED",
+                    chatId,
+                    null,
+                    chatService.getUnreadCount(chatId, username),
+                    List.of(deliveredStatus)
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                    username,
+                    "/queue/chat-events",
+                    event
+            );
+        }
     }
 }

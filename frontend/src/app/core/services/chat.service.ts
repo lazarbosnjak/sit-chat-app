@@ -152,6 +152,35 @@ export class ChatService {
     );
   }
 
+  sendVoiceMessage(
+    chatId: string,
+    file: Blob,
+    durationMs: number,
+    replyToMessageId?: string,
+  ): Observable<Message> {
+    const formData = new FormData();
+    const extension = file.type.includes('ogg') ? 'ogg' : file.type.includes('mp4') ? 'm4a' : 'webm';
+    const filename = `voice-message.${extension}`;
+    const audioFile = new File([file], filename, {
+      type: file.type || 'audio/webm',
+    });
+
+    formData.append('file', audioFile);
+    formData.append('durationMs', durationMs.toString());
+
+    if (replyToMessageId) {
+      formData.append('replyToMessageId', replyToMessageId);
+    }
+
+    return this.http.post<Message>(`${env.apiUrl}/chats/${chatId}/voice-messages`, formData);
+  }
+
+  getAudioBlob(audioId: string): Observable<Blob> {
+    return this.http.get(`${env.apiUrl}/audio/${audioId}`, {
+      responseType: 'blob',
+    });
+  }
+
   getChatPfpUrl(chat: Chat): string {
     const currentUser = this.userService.getLoggedInUser();
 

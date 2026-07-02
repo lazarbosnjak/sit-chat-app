@@ -84,6 +84,11 @@ export interface Message {
   chatId: string;
   sender: ChatMember;
   content: string;
+  type: 'TEXT' | 'VOICE';
+  audioId?: string | null;
+  audioDurationMs?: number | null;
+  audioContentType?: string | null;
+  audioSizeBytes?: number | null;
   systemMessage: boolean;
   replyToMessageId?: string;
   forwardedFromMessageId?: string;

@@ -32,6 +32,19 @@ public class Message {
     private String content;
 
     @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "message_type")
+    private MessageType type = MessageType.TEXT;
+
+    private UUID audioId;
+
+    private Integer audioDurationMs;
+
+    private String audioContentType;
+
+    private Long audioSizeBytes;
+
+    @Builder.Default
     private boolean systemMessage = false;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

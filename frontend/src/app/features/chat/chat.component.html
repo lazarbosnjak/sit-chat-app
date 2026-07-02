@@ -165,7 +165,34 @@
                       </div>
                     }
 
-                    @if (shouldRenderContent(message)) {
+                    @if (isVoiceMessage(message)) {
+                      <div class="min-w-56 max-w-full">
+                        @if (getAudioUrl(message); as audioUrl) {
+                          <audio
+                            [src]="audioUrl"
+                            controls
+                            preload="metadata"
+                            class="h-10 w-64 max-w-full"
+                          ></audio>
+                        } @else {
+                          <div
+                            class="flex h-10 w-64 max-w-full items-center rounded-lg bg-black/5 px-3 text-xs"
+                            [class.text-blue-100]="isOwnMessage(message)"
+                            [class.text-gray-500]="!isOwnMessage(message)"
+                          >
+                            Loading audio...
+                          </div>
+                        }
+
+                        <p
+                          class="mt-1 text-xs"
+                          [class.text-blue-100]="isOwnMessage(message)"
+                          [class.text-gray-400]="!isOwnMessage(message)"
+                        >
+                          {{ formatAudioDuration(message.audioDurationMs) }}
+                        </p>
+                      </div>
+                    } @else if (shouldRenderContent(message)) {
                       <p class="whitespace-pre-wrap wrap-break-words">
                         {{ message.content }}
                       </p>
@@ -307,7 +334,30 @@
         </div>
       }
 
+      @if (audioRecordingError(); as error) {
+        <p class="mb-3 text-sm text-red-600">{{ error }}</p>
+      }
+
       <form [formRoot]="messageForm" (submit)="sendMessage()" class="flex gap-3">
+        <button
+          type="button"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+          [class.bg-red-600]="isRecordingAudio()"
+          [class.text-white]="isRecordingAudio()"
+          [class.bg-gray-100]="!isRecordingAudio()"
+          [class.text-gray-700]="!isRecordingAudio()"
+          [disabled]="isUploadingVoiceMessage()"
+          [title]="isRecordingAudio() ? 'Stop recording' : 'Record voice message'"
+          [attr.aria-label]="isRecordingAudio() ? 'Stop recording' : 'Record voice message'"
+          (click)="toggleAudioRecording()"
+        >
+          @if (isRecordingAudio()) {
+            <svg lucideSquare class="h-4 w-4 fill-current"></svg>
+          } @else {
+            <svg lucideMic class="h-5 w-5"></svg>
+          }
+        </button>
+
         <input
           [formField]="messageForm.content"
           type="text"
@@ -319,7 +369,7 @@
         <button
           type="submit"
           class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          [disabled]="!messageModel().content.trim()"
+          [disabled]="!messageModel().content.trim() || isRecordingAudio() || isUploadingVoiceMessage()"
           title="Send"
           aria-label="Send"
         >

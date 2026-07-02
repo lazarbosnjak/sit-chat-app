@@ -1,0 +1,13 @@
+services:
+  audio:
+    build:
+      context: ./services/audio-service/
+      dockerfile: Dockerfile
+    restart: always
+    container_name: "audio-service"
+    hostname: "audio-service"
+    network_mode: host
+    env_file:
+      - "${HOME}/Desktop/svt/audio/.env"
+    volumes:
+      - ./services/audio-service/data:/app/data/audio

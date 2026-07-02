@@ -35,5 +35,8 @@ jwt:
 
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:4200}
+  audio-service:
+    base-url: ${AUDIO_SERVICE_BASE_URL:http://localhost:8082}
+    internal-token: ${AUDIO_INTERNAL_TOKEN:}
   mail:
     from: ${MAIL_FROM:no-reply@sitapp.local}

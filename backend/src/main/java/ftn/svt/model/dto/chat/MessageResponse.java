@@ -1,6 +1,7 @@
 package ftn.svt.model.dto.chat;
 
 import ftn.svt.model.Message;
+import ftn.svt.model.MessageType;
 import ftn.svt.model.ReceiptStatus;
 
 import java.time.Instant;
@@ -16,6 +17,11 @@ public record MessageResponse(
         MessageReferenceResponse replyTo,
         MessageReferenceResponse forwardedFrom,
         String content,
+        MessageType type,
+        UUID audioId,
+        Integer audioDurationMs,
+        String audioContentType,
+        Long audioSizeBytes,
         boolean systemMessage,
         Instant createdAt,
         ReceiptStatus deliveryStatus,
@@ -61,6 +67,11 @@ public record MessageResponse(
                         ? MessageReferenceResponse.from(message.getForwardedFrom())
                         : null,
                 message.getContent(),
+                message.getType(),
+                message.getAudioId(),
+                message.getAudioDurationMs(),
+                message.getAudioContentType(),
+                message.getAudioSizeBytes(),
                 message.isSystemMessage(),
                 message.getCreatedAt(),
                 deliveryStatus,

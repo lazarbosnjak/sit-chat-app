@@ -12,7 +12,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { form, FormField, FormRoot, required } from '@angular/forms/signals';
+import { disabled, form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ChatService } from '@core/services/chat.service';
@@ -37,10 +37,12 @@ import {
   LucideCopy,
   LucideForward,
   LucideLink,
+  LucideMic,
   LucideRefreshCw,
   LucideReply,
   LucideSend,
   LucideStar,
+  LucideSquare,
   LucideTrash2,
   LucideUsers,
   LucideX,
@@ -85,10 +87,12 @@ const EMPTY_GROUP_SETTINGS_MODEL: GroupSettingsModel = {
     LucideCopy,
     LucideForward,
     LucideLink,
+    LucideMic,
     LucideRefreshCw,
     LucideReply,
     LucideSend,
     LucideStar,
+    LucideSquare,
     LucideTrash2,
     LucideUsers,
     LucideX,
@@ -192,11 +196,21 @@ export class ChatComponent {
   isGeneratingGroupInvite = signal(false);
   isRevokingGroupInvite = signal(false);
   groupInviteCopied = signal(false);
+  isRecordingAudio = signal(false);
+  isUploadingVoiceMessage = signal(false);
+  audioRecordingError = signal<string | null>(null);
+  audioObjectUrls = signal<Record<string, string>>({});
 
   groupSettingsModel = signal<GroupSettingsModel>({ ...EMPTY_GROUP_SETTINGS_MODEL });
   groupSettingsForm = form(this.groupSettingsModel);
   groupMemberSearchModel = signal<GroupMemberSearchModel>({ content: '' });
   groupMemberSearchForm = form(this.groupMemberSearchModel);
+
+  private mediaRecorder: MediaRecorder | null = null;
+  private recordingStream: MediaStream | null = null;
+  private audioChunks: Blob[] = [];
+  private recordingStartedAt = 0;
+  private loadingAudioIds = new Set<string>();
 
   currentGroupMembers = computed(() => {
     const chat = this.chat();
@@ -262,6 +276,10 @@ export class ChatComponent {
   });
 
   messageForm = form(this.messageModel, (path) => {
+    disabled(path.content, {
+      when: () => this.isRecordingAudio() || this.isUploadingVoiceMessage(),
+    });
+
     required(path.content, {
       message: 'Message cannot be empty',
     });
@@ -319,6 +337,8 @@ export class ChatComponent {
 
     this.destroyRef.onDestroy(() => {
       this.chatEventSubscription?.unsubscribe();
+      this.stopRecordingStream();
+      Object.values(this.audioObjectUrls()).forEach((url) => URL.revokeObjectURL(url));
     });
   }
 
@@ -841,6 +861,137 @@ export class ChatComponent {
     this.cancelReply();
   }
 
+  async toggleAudioRecording(): Promise<void> {
+    if (this.isRecordingAudio()) {
+      this.stopAudioRecording();
+      return;
+    }
+
+    await this.startAudioRecording();
+  }
+
+  private async startAudioRecording(): Promise<void> {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      this.audioRecordingError.set('Audio recording is not supported in this browser.');
+      return;
+    }
+
+    try {
+      this.audioRecordingError.set(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = this.getPreferredAudioMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      this.recordingStream = stream;
+      this.mediaRecorder = recorder;
+      this.audioChunks = [];
+      this.recordingStartedAt = Date.now();
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        this.audioRecordingError.set('Could not record audio.');
+        this.stopRecordingStream();
+        this.isRecordingAudio.set(false);
+      };
+
+      recorder.onstop = () => {
+        const durationMs = Math.max(Date.now() - this.recordingStartedAt, 0);
+        const audioType = recorder.mimeType || mimeType || 'audio/webm';
+        const blob = new Blob(this.audioChunks, { type: audioType });
+
+        this.stopRecordingStream();
+        this.isRecordingAudio.set(false);
+        this.audioChunks = [];
+
+        if (blob.size === 0) {
+          this.audioRecordingError.set('Recorded audio was empty.');
+          return;
+        }
+
+        this.uploadVoiceMessage(blob, durationMs);
+      };
+
+      recorder.start();
+      this.isRecordingAudio.set(true);
+    } catch (err) {
+      console.error('Could not start audio recording', err);
+      this.audioRecordingError.set('Could not access the microphone.');
+      this.stopRecordingStream();
+      this.isRecordingAudio.set(false);
+    }
+  }
+
+  private stopAudioRecording(): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+      return;
+    }
+
+    this.stopRecordingStream();
+    this.isRecordingAudio.set(false);
+  }
+
+  private uploadVoiceMessage(blob: Blob, durationMs: number): void {
+    const chatId = this.selectedChatId();
+    const replyToMessageId = this.replyingTo()?.id;
+
+    if (!chatId) {
+      return;
+    }
+
+    this.isUploadingVoiceMessage.set(true);
+    this.audioRecordingError.set(null);
+
+    this.chatService
+      .sendVoiceMessage(chatId, blob, durationMs, replyToMessageId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (message) => {
+          const normalizedMessage = this.normalizeMessage(message);
+          const messageAlreadyExists = this.messages().some(
+            (candidate) => candidate.id === normalizedMessage.id,
+          );
+
+          if (!messageAlreadyExists) {
+            this.messages.update((messages) => [...messages, normalizedMessage]);
+          }
+
+          this.cancelReply();
+          this.isUploadingVoiceMessage.set(false);
+        },
+        error: (err) => {
+          console.error('Could not upload voice message', err);
+          this.audioRecordingError.set(this.getErrorMessage(err, 'Could not send voice message.'));
+          this.isUploadingVoiceMessage.set(false);
+        },
+      });
+  }
+
+  private getPreferredAudioMimeType(): string {
+    const supportedTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/mp4',
+    ];
+
+    return supportedTypes.find((type) => MediaRecorder.isTypeSupported(type)) ?? '';
+  }
+
+  private stopRecordingStream(): void {
+    this.recordingStream?.getTracks().forEach((track) => track.stop());
+    this.recordingStream = null;
+    this.mediaRecorder = null;
+  }
+
   startReply(message: Message): void {
     this.replyingTo.set(message);
   }
@@ -921,9 +1072,37 @@ export class ChatComponent {
   }
 
   shouldRenderContent(message: Message): boolean {
+    if (this.isVoiceMessage(message)) {
+      return false;
+    }
+
     const forwardedReference = this.getForwardedReference(message);
 
     return !forwardedReference || forwardedReference.content !== message.content;
+  }
+
+  isVoiceMessage(message: Message): boolean {
+    return message.type === 'VOICE';
+  }
+
+  getAudioUrl(message: Message): string | null {
+    if (!message.audioId) {
+      return null;
+    }
+
+    return this.audioObjectUrls()[message.audioId] ?? null;
+  }
+
+  formatAudioDuration(durationMs: number | null | undefined): string {
+    if (!durationMs || durationMs < 0) {
+      return '0:00';
+    }
+
+    const totalSeconds = Math.round(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
   emojiForReaction(type: MessageReactionType): string {
@@ -1055,11 +1234,54 @@ export class ChatComponent {
   }
 
   private normalizeMessage(message: Message): Message {
-    return {
+    const normalizedMessage = {
       ...message,
+      type: message.type ?? 'TEXT',
       reactions: message.reactions ?? [],
       starredByMe: message.starredByMe ?? false,
       systemMessage: message.systemMessage ?? false,
     };
+
+    this.ensureAudioObjectUrl(normalizedMessage);
+
+    return normalizedMessage;
+  }
+
+  private ensureAudioObjectUrl(message: Message): void {
+    if (!this.isVoiceMessage(message) || !message.audioId) {
+      return;
+    }
+
+    if (this.audioObjectUrls()[message.audioId] || this.loadingAudioIds.has(message.audioId)) {
+      return;
+    }
+
+    const audioId = message.audioId;
+    this.loadingAudioIds.add(audioId);
+
+    this.chatService
+      .getAudioBlob(audioId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          this.audioObjectUrls.update((urls) => {
+            const existingUrl = urls[audioId];
+            if (existingUrl) {
+              URL.revokeObjectURL(existingUrl);
+            }
+
+            return {
+              ...urls,
+              [audioId]: objectUrl,
+            };
+          });
+          this.loadingAudioIds.delete(audioId);
+        },
+        error: (err) => {
+          console.error('Could not load audio message', err);
+          this.loadingAudioIds.delete(audioId);
+        },
+      });
   }
 }

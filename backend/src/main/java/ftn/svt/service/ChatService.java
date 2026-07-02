@@ -2,6 +2,8 @@ package ftn.svt.service;
 
 import ftn.svt.exception.ApiException;
 import ftn.svt.model.*;
+import ftn.svt.model.dto.audio.AudioMetadataResponse;
+import ftn.svt.model.dto.audio.AudioStreamResponse;
 import ftn.svt.model.dto.chat.ChatMemberAddRequest;
 import ftn.svt.model.dto.chat.ChatMemberRoleUpdateRequest;
 import ftn.svt.model.dto.chat.ChatCreateRequest;
@@ -17,6 +19,7 @@ import ftn.svt.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.time.Instant;
@@ -36,6 +39,7 @@ public class ChatService {
     private final StarredMessageRepository starredMessageRepository;
     private final ChatMemberRepository chatMemberRepository;
     private final UserActivityService userActivityService;
+    private final AudioServiceClient audioServiceClient;
 
     @Transactional
     public Chat create(ChatCreateRequest dto, Principal principal) {
@@ -470,6 +474,9 @@ public class ChatService {
         Message replyTo = getReplyToMessage(replyToMessageId, chatId);
         Message forwardedFrom = getForwardedFromMessage(forwardedFromMessageId, senderUsername);
         String normalizedContent = normalizeMessageContent(content, forwardedFrom);
+        MessageType messageType = isForwardingActiveVoiceMessage(forwardedFrom)
+                ? MessageType.VOICE
+                : MessageType.TEXT;
 
         if (normalizedContent.isBlank()) {
             throw ApiException.badRequest("Message content cannot be empty");
@@ -481,32 +488,115 @@ public class ChatService {
                 .replyTo(replyTo)
                 .forwardedFrom(forwardedFrom)
                 .content(normalizedContent)
+                .type(messageType)
                 .build();
+
+        if (messageType == MessageType.VOICE) {
+            copyAudioFields(message, forwardedFrom);
+        }
 
         Message savedMessage = messageRepository.save(message);
 
-        List<ChatMember> recipients = chatMemberRepository.findAllByChatIdAndActiveTrue(chatId);
+        return createReceiptsAndResponse(savedMessage, senderMember, chatId, sender);
+    }
 
-        Instant now = Instant.now();
+    @Transactional
+    public MessageResponse sendVoiceMessage(
+            String senderUsername,
+            UUID chatId,
+            MultipartFile file,
+            int durationMs,
+            UUID replyToMessageId
+    ) {
+        User sender = userRepository.findByUsername(senderUsername)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
 
-        List<MessageReceipt> receipts = recipients.stream()
-                .map(recipient -> {
-                    boolean isSender = recipient.getId().equals(senderMember.getId());
+        if (!sender.isEnabled()) {
+            throw ApiException.forbidden("Blocked users cannot send messages");
+        }
 
-                    return MessageReceipt.builder()
-                            .message(savedMessage)
-                            .recipient(recipient)
-                            .status(isSender ? ReceiptStatus.READ : ReceiptStatus.SENT)
-                            .deliveredAt(isSender ? now : null)
-                            .readAt(isSender ? now : null)
-                            .build();
-                })
-                .toList();
+        validateVoiceMessageFile(file, durationMs);
 
-        messageReceiptRepository.saveAll(receipts);
-        userActivityService.recordActivity(sender.getId(), UserActivityType.MESSAGE_SENT);
+        ChatMember senderMember = chatMemberRepository
+                .findByChatIdAndUserUsernameAndActiveTrue(chatId, senderUsername)
+                .orElseThrow(() -> ApiException.forbidden("You are not a member of this chat"));
 
-        return MessageResponse.from(savedMessage, getDeliveryStatus(receipts), List.of());
+        Chat chat = senderMember.getChat();
+        Message replyTo = getReplyToMessage(replyToMessageId, chatId);
+
+        Message message = Message.builder()
+                .chat(chat)
+                .sender(senderMember)
+                .replyTo(replyTo)
+                .content("Voice message")
+                .type(MessageType.VOICE)
+                .build();
+
+        Message savedMessage = messageRepository.save(message);
+        AudioMetadataResponse audioMetadata = audioServiceClient.upload(
+                savedMessage.getId(),
+                chatId,
+                sender.getId(),
+                file,
+                durationMs
+        );
+
+        savedMessage.setAudioId(audioMetadata.id());
+        savedMessage.setAudioDurationMs(audioMetadata.durationMs());
+        savedMessage.setAudioContentType(audioMetadata.contentType());
+        savedMessage.setAudioSizeBytes(audioMetadata.sizeBytes());
+        savedMessage = messageRepository.save(savedMessage);
+
+        return createReceiptsAndResponse(savedMessage, senderMember, chatId, sender);
+    }
+
+    @Transactional(readOnly = true)
+    public AudioStreamResponse streamVoiceMessage(String username, UUID audioId, String rangeHeader) {
+        if (!messageRepository.existsByAudioId(audioId)) {
+            throw ApiException.notFound("Voice message with this audio id does not exist");
+        }
+
+        boolean canAccessAudio = messageRepository.existsAccessibleAudioByIdAndUsername(audioId, username);
+
+        if (!canAccessAudio) {
+            throw ApiException.forbidden("You are not a member of this chat");
+        }
+
+        return audioServiceClient.stream(audioId, rangeHeader);
+    }
+
+    @Transactional
+    public UUID deleteVoiceMessageAudio(String username, UUID audioId) {
+        List<Message> messages = messageRepository.findAllByAudioId(audioId);
+        if (messages.isEmpty()) {
+            throw ApiException.notFound("Voice message with this audio id does not exist");
+        }
+
+        if (messages.size() > 1) {
+            throw ApiException.conflict("Voice audio is referenced by forwarded messages");
+        }
+
+        Message message = messages.get(0);
+
+        if (message.getType() != MessageType.VOICE) {
+            throw ApiException.badRequest("Message is not a voice message");
+        }
+
+        if (!message.getSender().getUser().getUsername().equals(username)) {
+            throw ApiException.forbidden("Only the sender can delete this voice message");
+        }
+
+        audioServiceClient.delete(audioId);
+
+        message.setAudioId(null);
+        message.setAudioDurationMs(null);
+        message.setAudioContentType(null);
+        message.setAudioSizeBytes(null);
+        message.setType(MessageType.TEXT);
+        message.setContent("Voice message deleted");
+        messageRepository.save(message);
+
+        return message.getChat().getId();
     }
 
     @Transactional
@@ -776,6 +866,35 @@ public class ChatService {
         return MessageResponse.from(savedMessage, getDeliveryStatus(receipts), List.of());
     }
 
+    private MessageResponse createReceiptsAndResponse(
+            Message savedMessage,
+            ChatMember senderMember,
+            UUID chatId,
+            User sender
+    ) {
+        List<ChatMember> recipients = chatMemberRepository.findAllByChatIdAndActiveTrue(chatId);
+        Instant now = Instant.now();
+
+        List<MessageReceipt> receipts = recipients.stream()
+                .map(recipient -> {
+                    boolean isSender = recipient.getId().equals(senderMember.getId());
+
+                    return MessageReceipt.builder()
+                            .message(savedMessage)
+                            .recipient(recipient)
+                            .status(isSender ? ReceiptStatus.READ : ReceiptStatus.SENT)
+                            .deliveredAt(isSender ? now : null)
+                            .readAt(isSender ? now : null)
+                            .build();
+                })
+                .toList();
+
+        messageReceiptRepository.saveAll(receipts);
+        userActivityService.recordActivity(sender.getId(), UserActivityType.MESSAGE_SENT);
+
+        return MessageResponse.from(savedMessage, getDeliveryStatus(receipts), List.of());
+    }
+
     private Message getReplyToMessage(UUID replyToMessageId, UUID chatId) {
         if (replyToMessageId == null) {
             return null;
@@ -819,6 +938,41 @@ public class ChatService {
         }
 
         return normalizedContent;
+    }
+
+    private boolean isForwardingActiveVoiceMessage(Message forwardedFrom) {
+        return forwardedFrom != null
+                && forwardedFrom.getType() == MessageType.VOICE
+                && forwardedFrom.getAudioId() != null;
+    }
+
+    private void copyAudioFields(Message target, Message source) {
+        target.setAudioId(source.getAudioId());
+        target.setAudioDurationMs(source.getAudioDurationMs());
+        target.setAudioContentType(source.getAudioContentType());
+        target.setAudioSizeBytes(source.getAudioSizeBytes());
+    }
+
+    private void validateVoiceMessageFile(MultipartFile file, int durationMs) {
+        if (file == null || file.isEmpty()) {
+            throw ApiException.badRequest("Audio file is required");
+        }
+
+        if (durationMs < 0) {
+            throw ApiException.badRequest("Audio duration must be a non-negative number");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !isSupportedAudioContentType(contentType)) {
+            throw ApiException.badRequest("Unsupported audio content type");
+        }
+    }
+
+    private boolean isSupportedAudioContentType(String contentType) {
+        String normalizedContentType = contentType.split(";")[0].trim().toLowerCase(Locale.ROOT);
+
+        return normalizedContentType.startsWith("audio/")
+                || normalizedContentType.equals("video/webm");
     }
 
     private String normalizeOptionalText(String text) {

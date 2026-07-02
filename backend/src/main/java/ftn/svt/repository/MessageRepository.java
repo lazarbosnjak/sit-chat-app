@@ -16,6 +16,24 @@ import java.util.UUID;
 public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findAllByChatIdOrderByCreatedAtAsc(UUID chatId);
 
+    boolean existsByAudioId(UUID audioId);
+
+    List<Message> findAllByAudioId(UUID audioId);
+
+    @Query("""
+            select count(m) > 0
+            from Message m
+            join m.chat chat
+            join chat.members member
+            where m.audioId = :audioId
+                and member.user.username = :username
+                and member.active = true
+            """)
+    boolean existsAccessibleAudioByIdAndUsername(
+            @Param("audioId") UUID audioId,
+            @Param("username") String username
+    );
+
     long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Instant rangeStart,
             Instant rangeEnd
