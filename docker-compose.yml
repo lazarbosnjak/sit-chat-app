@@ -1,4 +1,15 @@
 services:
+  backend:
+    build:
+      context: ./backend/
+      dockerfile: Dockerfile
+    restart: always
+    container_name: "backend"
+    hostname: "backend"
+    network_mode: host
+    env_file:
+      - "${HOME}/Desktop/svt/.env"
+
   audio:
     build:
       context: ./services/audio-service/
