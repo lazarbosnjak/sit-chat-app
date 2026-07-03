@@ -310,14 +310,16 @@
         </label>
       </div>
 
-      <div class="grid max-h-[30rem] grid-rows-2 gap-4">
-        <section class="min-h-0 rounded-lg border border-gray-200">
+      <div class="grid h-[30rem] max-h-[60dvh] grid-rows-2 gap-4">
+        <section
+          class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-gray-200"
+        >
           <header class="border-b border-gray-100 px-3 py-2">
             <h3 class="text-sm font-semibold text-gray-900">Contacts</h3>
             <p class="text-xs text-gray-500">Users from your existing chats.</p>
           </header>
 
-          <div class="max-h-52 overflow-y-auto p-2">
+          <div class="min-h-0 overflow-x-hidden overflow-y-auto p-2">
             @if (filteredContactUsers().length === 0) {
               <p class="py-6 text-center text-sm text-gray-500">No contacts match this search.</p>
             }
@@ -325,7 +327,7 @@
             @for (user of filteredContactUsers(); track user.id) {
               <button
                 type="button"
-                class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition hover:bg-gray-100"
+                class="flex min-w-0 w-full items-center gap-3 overflow-hidden rounded-lg p-3 text-left transition hover:bg-gray-100"
                 [class.bg-blue-50]="isGroupMemberSelected(user.id)"
                 (click)="toggleGroupMember(user)"
               >
@@ -340,10 +342,10 @@
                 <img
                   [src]="user.pfpUrl"
                   alt="Profile picture"
-                  class="h-10 w-10 rounded-full object-cover"
+                  class="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
 
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p class="truncate font-medium">
                     {{ getCandidateFullName(user) }}
                     @if (user.phoneNumber) {
@@ -360,13 +362,15 @@
           </div>
         </section>
 
-        <section class="min-h-0 rounded-lg border border-gray-200">
+        <section
+          class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-gray-200"
+        >
           <header class="border-b border-gray-100 px-3 py-2">
             <h3 class="text-sm font-semibold text-gray-900">New users</h3>
             <p class="text-xs text-gray-500">Users you have not chatted with yet.</p>
           </header>
 
-          <div class="max-h-52 overflow-y-auto p-2">
+          <div class="min-h-0 overflow-x-hidden overflow-y-auto p-2">
             @if (!hasSearchCriteria()) {
               <p class="py-6 text-center text-sm text-gray-500">
                 Search to add users outside your contacts.
@@ -386,7 +390,7 @@
             @for (user of newUserSearchResults(); track user.id) {
               <button
                 type="button"
-                class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition hover:bg-gray-100"
+                class="flex min-w-0 w-full items-center gap-3 overflow-hidden rounded-lg p-3 text-left transition hover:bg-gray-100"
                 [class.bg-blue-50]="isGroupMemberSelected(user.id)"
                 (click)="toggleGroupMember(user)"
               >
@@ -401,10 +405,10 @@
                 <img
                   [src]="user.pfpUrl"
                   alt="Profile picture"
-                  class="h-10 w-10 rounded-full object-cover"
+                  class="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
 
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p class="truncate font-medium">
                     {{ getCandidateFullName(user) }}
                     @if (user.phoneNumber) {
