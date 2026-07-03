@@ -1,101 +1,42 @@
-import { formatDate } from '@angular/common';
-import {
-  afterNextRender,
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-  ViewChild,
-} from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { disabled, form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ChatService } from '@core/services/chat.service';
 import { StompService } from '@core/services/stomp.service';
 import { UserService } from '@core/services/user.service';
-import { ModalComponent } from '@shared/components/modal/modal.component';
 import { SidebarComponent } from '@shared/components/sidebar/sidebar.component';
 import {
   Chat,
   ChatMember,
   ChatEvent,
   Message,
-  MessageDeliveryStatus,
   MessageReceipt,
   MessageReactionSummary,
   MessageReactionType,
-  MessageReference,
   MessageStatus,
   User,
 } from '@shared/types/api.types';
-import {
-  LucideCopy,
-  LucideForward,
-  LucideLink,
-  LucideMic,
-  LucideRefreshCw,
-  LucideReply,
-  LucideSend,
-  LucideStar,
-  LucideSquare,
-  LucideTrash2,
-  LucideUsers,
-  LucideX,
-} from '@lucide/angular';
 import { StompSubscription } from '@stomp/stompjs';
 import { forkJoin, switchMap, tap } from 'rxjs';
-
-interface GroupSettingsModel {
-  name: string;
-  description: string;
-  imageUrl: string;
-}
-
-interface GroupMemberSearchModel {
-  content: string;
-}
-
-interface AddableGroupMember {
-  id: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  phoneNumber?: string | null;
-  pfpUrl: string;
-  lastActiveAt?: Date | string | null;
-}
-
-const EMPTY_GROUP_SETTINGS_MODEL: GroupSettingsModel = {
-  name: '',
-  description: '',
-  imageUrl: '',
-};
+import { ChatHeaderComponent } from './components/chat-header/chat-header.component';
+import { ForwardMessageModalComponent } from './components/forward-message-modal/forward-message-modal.component';
+import { GroupSettingsModalComponent } from './components/group-settings-modal/group-settings-modal.component';
+import { MessageComposerComponent } from './components/message-composer/message-composer.component';
+import { MessageListComponent } from './components/message-list/message-list.component';
+import { UserProfileModalComponent } from './components/user-profile-modal/user-profile-modal.component';
+import { ReactionOption } from './chat.types';
 
 @Component({
   templateUrl: './chat.component.html',
   imports: [
     SidebarComponent,
-    ModalComponent,
-    FormRoot,
-    FormField,
-    LucideCopy,
-    LucideForward,
-    LucideLink,
-    LucideMic,
-    LucideRefreshCw,
-    LucideReply,
-    LucideSend,
-    LucideStar,
-    LucideSquare,
-    LucideTrash2,
-    LucideUsers,
-    LucideX,
+    ChatHeaderComponent,
+    MessageListComponent,
+    MessageComposerComponent,
+    ForwardMessageModalComponent,
+    UserProfileModalComponent,
+    GroupSettingsModalComponent,
   ],
 })
 export class ChatComponent {
@@ -107,67 +48,6 @@ export class ChatComponent {
   private readonly stompService = inject(StompService);
   private readonly destroyRef = inject(DestroyRef);
 
-  @ViewChild('messagesContainer')
-  private messagesContainer?: ElementRef<HTMLElement>;
-  private injector = inject(Injector);
-
-  constructor() {
-    effect(() => {
-      this.messages();
-
-      afterNextRender(
-        () => {
-          this.scrollToBottom();
-        },
-        {
-          injector: this.injector,
-        },
-      );
-    });
-
-    effect((onCleanup) => {
-      const content = this.groupMemberSearchModel().content.trim();
-      const DEBOUNCE_TIMER = 300;
-
-      if (!this.isGroupSettingsModalOpen() || !this.isCurrentUserGroupAdmin() || !content) {
-        this.groupMemberSearchResults.set([]);
-        this.isSearchingGroupMembers.set(false);
-        return;
-      }
-
-      this.isSearchingGroupMembers.set(true);
-      let subscription: { unsubscribe: () => void } | null = null;
-
-      const timeoutId = setTimeout(() => {
-        subscription = this.userService.searchUsers(content).subscribe({
-          next: (users) => {
-            this.groupMemberSearchResults.set(users);
-            this.isSearchingGroupMembers.set(false);
-          },
-          error: (err) => {
-            console.error('Could not search users', err);
-            this.groupMemberSearchResults.set([]);
-            this.isSearchingGroupMembers.set(false);
-          },
-        });
-      }, DEBOUNCE_TIMER);
-
-      onCleanup(() => {
-        clearTimeout(timeoutId);
-        subscription?.unsubscribe();
-      });
-    });
-  }
-
-  private scrollToBottom() {
-    const el = this.messagesContainer?.nativeElement;
-
-    if (!el) {
-      return;
-    }
-
-    el.scrollTop = el.scrollHeight;
-  }
   currentUser = signal<User | null>(this.userService.getLoggedInUser());
 
   chat = signal<Chat | null>(null);
@@ -183,28 +63,10 @@ export class ChatComponent {
   isGroupSettingsModalOpen = signal(false);
   selectedProfileUser = signal<User | null>(null);
   userProfileError = signal<string | null>(null);
-  groupSettingsError = signal<string | null>(null);
-  addGroupMemberError = signal<string | null>(null);
-  isSavingGroupSettings = signal(false);
-  isUpdatingGroupMember = signal(false);
-  isSearchingGroupMembers = signal(false);
-  groupMemberSearchResults = signal<User[]>([]);
-  groupInviteToken = signal<string | null>(null);
-  groupInviteGeneratedAt = signal<Date | string | null>(null);
-  groupInviteError = signal<string | null>(null);
-  isLoadingGroupInvite = signal(false);
-  isGeneratingGroupInvite = signal(false);
-  isRevokingGroupInvite = signal(false);
-  groupInviteCopied = signal(false);
   isRecordingAudio = signal(false);
   isUploadingVoiceMessage = signal(false);
   audioRecordingError = signal<string | null>(null);
   audioObjectUrls = signal<Record<string, string>>({});
-
-  groupSettingsModel = signal<GroupSettingsModel>({ ...EMPTY_GROUP_SETTINGS_MODEL });
-  groupSettingsForm = form(this.groupSettingsModel);
-  groupMemberSearchModel = signal<GroupMemberSearchModel>({ content: '' });
-  groupMemberSearchForm = form(this.groupMemberSearchModel);
 
   private mediaRecorder: MediaRecorder | null = null;
   private recordingStream: MediaStream | null = null;
@@ -212,78 +74,12 @@ export class ChatComponent {
   private recordingStartedAt = 0;
   private loadingAudioIds = new Set<string>();
 
-  currentGroupMembers = computed(() => {
-    const chat = this.chat();
-
-    return chat?.type === 'GROUP' ? chat.members : [];
-  });
-
-  isCurrentUserGroupAdmin = computed(() => {
-    const currentUserId = this.currentUser()?.id;
-
-    return this.currentGroupMembers().some(
-      (member) => member.userId === currentUserId && member.role === 'ADMIN',
-    );
-  });
-
-  availableContactMembers = computed(() => {
-    const currentUserId = this.currentUser()?.id;
-    const currentMemberIds = new Set(this.currentGroupMembers().map((member) => member.userId));
-    const usersById = new Map<string, AddableGroupMember>();
-    const search = this.groupMemberSearchModel().content.trim().toLowerCase();
-
-    for (const chat of this.chatService.chats()) {
-      for (const member of chat.members) {
-        if (
-          member.userId === currentUserId ||
-          currentMemberIds.has(member.userId) ||
-          usersById.has(member.userId)
-        ) {
-          continue;
-        }
-
-        const candidate = this.memberToAddable(member);
-
-        if (!search || this.matchesAddableMemberSearch(candidate, search)) {
-          usersById.set(candidate.id, candidate);
-        }
-      }
-    }
-
-    return Array.from(usersById.values()).sort((a, b) =>
-      this.getAddableMemberName(a).localeCompare(this.getAddableMemberName(b)),
-    );
-  });
-
-  newGroupMemberSearchResults = computed(() => {
-    const currentMemberIds = new Set(this.currentGroupMembers().map((member) => member.userId));
-    const contactIds = new Set(this.availableContactMembers().map((member) => member.id));
-
-    return this.groupMemberSearchResults()
-      .filter((user) => !currentMemberIds.has(user.id) && !contactIds.has(user.id))
-      .map((user) => this.userToAddable(user));
-  });
-
-  readonly reactionOptions: { type: MessageReactionType; emoji: string; label: string }[] = [
+  readonly reactionOptions: ReactionOption[] = [
     { type: 'HEART', emoji: '❤', label: 'Heart' },
     { type: 'LIKE', emoji: '👍', label: 'Like' },
     { type: 'LAUGH', emoji: '😂', label: 'Laugh' },
     { type: 'CRY', emoji: '😢', label: 'Cry' },
   ];
-
-  messageModel = signal({
-    content: '',
-  });
-
-  messageForm = form(this.messageModel, (path) => {
-    disabled(path.content, {
-      when: () => this.isRecordingAudio() || this.isUploadingVoiceMessage(),
-    });
-
-    required(path.content, {
-      message: 'Message cannot be empty',
-    });
-  });
 
   private chatEventSubscription: StompSubscription | null = null;
 
@@ -402,344 +198,20 @@ export class ChatComponent {
       return;
     }
 
-    this.groupSettingsModel.set({
-      name: chat.name ?? '',
-      description: chat.description ?? '',
-      imageUrl: chat.imageUrl ?? '',
-    });
-    this.groupMemberSearchModel.set({ content: '' });
-    this.groupMemberSearchResults.set([]);
-    this.groupSettingsError.set(null);
-    this.addGroupMemberError.set(null);
     this.isGroupSettingsModalOpen.set(true);
-
-    if (this.isCurrentUserGroupAdmin()) {
-      this.loadGroupInviteLink(chat.id);
-    }
   }
 
   closeGroupSettingsModal(): void {
     this.isGroupSettingsModalOpen.set(false);
-    this.groupSettingsError.set(null);
-    this.addGroupMemberError.set(null);
-    this.groupInviteError.set(null);
-    this.groupInviteToken.set(null);
-    this.groupInviteGeneratedAt.set(null);
-    this.groupInviteCopied.set(false);
-    this.isLoadingGroupInvite.set(false);
-    this.isGeneratingGroupInvite.set(false);
-    this.isRevokingGroupInvite.set(false);
-    this.groupMemberSearchModel.set({ content: '' });
-    this.groupMemberSearchResults.set([]);
-    this.isSearchingGroupMembers.set(false);
   }
 
-  saveGroupSettings(): void {
-    const chat = this.chat();
-    const name = this.groupSettingsModel().name.trim();
-
-    if (!chat || chat.type !== 'GROUP' || !this.isCurrentUserGroupAdmin() || !name) {
-      return;
-    }
-
-    this.isSavingGroupSettings.set(true);
-    this.groupSettingsError.set(null);
-
-    this.chatService
-      .updateGroupChat(chat.id, {
-        name,
-        description: this.groupSettingsModel().description.trim(),
-        imageUrl: this.groupSettingsModel().imageUrl.trim(),
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updatedChat) => {
-          this.applyUpdatedChat(updatedChat);
-          this.reloadCurrentMessages();
-          this.isSavingGroupSettings.set(false);
-        },
-        error: (err) => {
-          console.error('Could not update group', err);
-          this.groupSettingsError.set(this.getErrorMessage(err, 'Could not update group.'));
-          this.isSavingGroupSettings.set(false);
-        },
-      });
-  }
-
-  loadGroupInviteLink(chatId: string): void {
-    this.isLoadingGroupInvite.set(true);
-    this.groupInviteError.set(null);
-
-    this.chatService
-      .getGroupInviteLink(chatId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (inviteLink) => {
-          this.groupInviteToken.set(inviteLink.token ?? null);
-          this.groupInviteGeneratedAt.set(inviteLink.generatedAt ?? null);
-          this.isLoadingGroupInvite.set(false);
-        },
-        error: (err) => {
-          console.error('Could not load invite link', err);
-          this.groupInviteError.set(this.getErrorMessage(err, 'Could not load invite link.'));
-          this.isLoadingGroupInvite.set(false);
-        },
-      });
-  }
-
-  generateGroupInviteLink(): void {
-    const chat = this.chat();
-
-    if (!chat || chat.type !== 'GROUP' || !this.isCurrentUserGroupAdmin()) {
-      return;
-    }
-
-    this.isGeneratingGroupInvite.set(true);
-    this.groupInviteError.set(null);
-    this.groupInviteCopied.set(false);
-
-    this.chatService
-      .generateGroupInviteLink(chat.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (inviteLink) => {
-          this.groupInviteToken.set(inviteLink.token ?? null);
-          this.groupInviteGeneratedAt.set(inviteLink.generatedAt ?? null);
-          this.isGeneratingGroupInvite.set(false);
-        },
-        error: (err) => {
-          console.error('Could not generate invite link', err);
-          this.groupInviteError.set(this.getErrorMessage(err, 'Could not generate invite link.'));
-          this.isGeneratingGroupInvite.set(false);
-        },
-      });
-  }
-
-  revokeGroupInviteLink(): void {
-    const chat = this.chat();
-
-    if (
-      !chat ||
-      chat.type !== 'GROUP' ||
-      !this.isCurrentUserGroupAdmin() ||
-      !this.groupInviteToken()
-    ) {
-      return;
-    }
-
-    this.isRevokingGroupInvite.set(true);
-    this.groupInviteError.set(null);
-    this.groupInviteCopied.set(false);
-
-    this.chatService
-      .revokeGroupInviteLink(chat.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.groupInviteToken.set(null);
-          this.groupInviteGeneratedAt.set(null);
-          this.isRevokingGroupInvite.set(false);
-        },
-        error: (err) => {
-          console.error('Could not revoke invite link', err);
-          this.groupInviteError.set(this.getErrorMessage(err, 'Could not revoke invite link.'));
-          this.isRevokingGroupInvite.set(false);
-        },
-      });
-  }
-
-  copyGroupInviteLink(): void {
-    const inviteUrl = this.getGroupInviteUrl();
-
-    if (!inviteUrl) {
-      return;
-    }
-
-    if (!navigator.clipboard) {
-      this.groupInviteError.set('Could not copy invite link.');
-      return;
-    }
-
-    navigator.clipboard
-      .writeText(inviteUrl)
-      .then(() => {
-        this.groupInviteError.set(null);
-        this.groupInviteCopied.set(true);
-        setTimeout(() => this.groupInviteCopied.set(false), 1500);
-      })
-      .catch((err) => {
-        console.error('Could not copy invite link', err);
-        this.groupInviteError.set('Could not copy invite link.');
-      });
-  }
-
-  getGroupInviteUrl(): string {
-    const token = this.groupInviteToken();
-
-    if (!token) {
-      return '';
-    }
-
-    return `${window.location.origin}/invite/${encodeURIComponent(token)}`;
-  }
-
-  formatInviteGeneratedAt(value: Date | string | null): string {
-    if (!value) {
-      return '';
-    }
-
-    return formatDate(new Date(value), 'dd.MM.yyyy. HH:mm', 'en-US');
-  }
-
-  addGroupMember(user: AddableGroupMember): void {
-    const chat = this.chat();
-
-    if (!chat || chat.type !== 'GROUP' || !this.isCurrentUserGroupAdmin()) {
-      return;
-    }
-
-    this.isUpdatingGroupMember.set(true);
-    this.addGroupMemberError.set(null);
-
-    this.chatService
-      .addGroupMembers(chat.id, [user.id])
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updatedChat) => {
-          this.applyUpdatedChat(updatedChat);
-          this.reloadCurrentMessages();
-          this.groupMemberSearchResults.update((users) =>
-            users.filter((candidate) => candidate.id !== user.id),
-          );
-          this.isUpdatingGroupMember.set(false);
-        },
-        error: (err) => {
-          console.error('Could not add group member', err);
-          this.addGroupMemberError.set(this.getErrorMessage(err, 'Could not add group member.'));
-          this.isUpdatingGroupMember.set(false);
-        },
-      });
-  }
-
-  removeGroupMember(member: ChatMember): void {
-    const chat = this.chat();
-
-    if (!chat || chat.type !== 'GROUP' || !this.canRemoveGroupMember(member)) {
-      return;
-    }
-
-    this.isUpdatingGroupMember.set(true);
-    this.addGroupMemberError.set(null);
-
-    this.chatService
-      .removeGroupMember(chat.id, member.memberId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updatedChat) => {
-          this.applyUpdatedChat(updatedChat);
-          this.reloadCurrentMessages();
-          this.isUpdatingGroupMember.set(false);
-        },
-        error: (err) => {
-          console.error('Could not remove group member', err);
-          this.addGroupMemberError.set(this.getErrorMessage(err, 'Could not remove group member.'));
-          this.isUpdatingGroupMember.set(false);
-        },
-      });
-  }
-
-  toggleGroupMemberRole(member: ChatMember): void {
-    const chat = this.chat();
-
-    if (!chat || chat.type !== 'GROUP' || !this.canChangeGroupMemberRole(member)) {
-      return;
-    }
-
-    const role = member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN';
-    this.isUpdatingGroupMember.set(true);
-    this.addGroupMemberError.set(null);
-
-    this.chatService
-      .updateGroupMemberRole(chat.id, member.memberId, role)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updatedChat) => {
-          this.applyUpdatedChat(updatedChat);
-          this.reloadCurrentMessages();
-          this.isUpdatingGroupMember.set(false);
-        },
-        error: (err) => {
-          console.error('Could not update group member role', err);
-          this.addGroupMemberError.set(this.getErrorMessage(err, 'Could not update group role.'));
-          this.isUpdatingGroupMember.set(false);
-        },
-      });
-  }
-
-  canSaveGroupSettings(): boolean {
-    return (
-      this.isCurrentUserGroupAdmin() &&
-      this.groupSettingsModel().name.trim().length > 0 &&
-      !this.isSavingGroupSettings()
-    );
-  }
-
-  canChangeGroupMemberRole(member: ChatMember): boolean {
-    if (!this.isCurrentUserGroupAdmin() || member.userId === this.currentUser()?.id) {
-      return false;
-    }
-
-    return member.role !== 'ADMIN' || this.activeGroupAdminCount() > 1;
-  }
-
-  canRemoveGroupMember(member: ChatMember): boolean {
-    if (!this.isCurrentUserGroupAdmin() || member.userId === this.currentUser()?.id) {
-      return false;
-    }
-
-    return member.role !== 'ADMIN' || this.activeGroupAdminCount() > 1;
-  }
-
-  activeGroupAdminCount(): number {
-    return this.currentGroupMembers().filter((member) => member.role === 'ADMIN').length;
-  }
-
-  getAddableMemberName(user: AddableGroupMember): string {
-    return user.fullName || `${user.firstName} ${user.lastName}`.trim();
+  handleGroupChatUpdated(updatedChat: Chat): void {
+    this.applyUpdatedChat(updatedChat);
+    this.reloadCurrentMessages();
   }
 
   isOwnMessage(message: Message): boolean {
     return message.sender.userId === this.currentUser()?.id;
-  }
-
-  formatMessageTime(value: Date | string): string {
-    const date = new Date(value);
-    const now = new Date();
-
-    if (this.isSameDay(date, now)) {
-      return formatDate(date, 'HH:mm', 'en-US');
-    }
-
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-
-    if (this.isSameDay(date, yesterday)) {
-      return `Yesterday ${formatDate(date, 'HH:mm', 'en-US')}`;
-    }
-
-    if (date.getFullYear() === now.getFullYear()) {
-      return formatDate(date, 'dd.MM.', 'en-US');
-    }
-
-    return formatDate(date, 'dd.MM.yyyy.', 'en-US');
-  }
-
-  private isSameDay(a: Date, b: Date): boolean {
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
   }
 
   private setupLiveChat(): void {
@@ -796,7 +268,9 @@ export class ChatComponent {
     }
 
     const normalizedMessage = this.normalizeMessage(createdMessage);
-    const messageAlreadyExist = this.messages().some((message) => message.id === normalizedMessage.id);
+    const messageAlreadyExist = this.messages().some(
+      (message) => message.id === normalizedMessage.id,
+    );
 
     if (messageAlreadyExist) {
       return;
@@ -840,9 +314,8 @@ export class ChatComponent {
     );
   }
 
-  sendMessage(): void {
+  sendMessage(content: string): void {
     const chatId = this.selectedChatId();
-    const content = this.messageModel().content.trim();
     const replyToMessageId = this.replyingTo()?.id;
 
     if (!chatId || !content) {
@@ -855,9 +328,6 @@ export class ChatComponent {
       replyToMessageId,
     });
 
-    this.messageModel.set({
-      content: '',
-    });
     this.cancelReply();
   }
 
@@ -1063,54 +533,8 @@ export class ChatComponent {
     return this.chatService.chats().filter((chat) => chat.id !== selectedChatId);
   }
 
-  getReplyReference(message: Message): MessageReference | null {
-    return message.replyTo ?? this.findMessageReference(message.replyToMessageId);
-  }
-
-  getForwardedReference(message: Message): MessageReference | null {
-    return message.forwardedFrom ?? this.findMessageReference(message.forwardedFromMessageId);
-  }
-
-  shouldRenderContent(message: Message): boolean {
-    if (this.isVoiceMessage(message)) {
-      return false;
-    }
-
-    const forwardedReference = this.getForwardedReference(message);
-
-    return !forwardedReference || forwardedReference.content !== message.content;
-  }
-
   isVoiceMessage(message: Message): boolean {
     return message.type === 'VOICE';
-  }
-
-  getAudioUrl(message: Message): string | null {
-    if (!message.audioId) {
-      return null;
-    }
-
-    return this.audioObjectUrls()[message.audioId] ?? null;
-  }
-
-  formatAudioDuration(durationMs: number | null | undefined): string {
-    if (!durationMs || durationMs < 0) {
-      return '0:00';
-    }
-
-    const totalSeconds = Math.round(durationMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  }
-
-  emojiForReaction(type: MessageReactionType): string {
-    return this.reactionOptions.find((reaction) => reaction.type === type)?.emoji ?? '';
-  }
-
-  labelForReaction(type: MessageReactionType): string {
-    return this.reactionOptions.find((reaction) => reaction.type === type)?.label ?? type;
   }
 
   private markCurrentChatAsRead(): void {
@@ -1126,36 +550,6 @@ export class ChatComponent {
       .subscribe({
         error: (err) => console.error('Could not mark chat as read', err),
       });
-  }
-
-  getMessageStatusLabel(status: MessageDeliveryStatus): string {
-    if (status === 'READ') {
-      return 'Read';
-    }
-
-    if (status === 'DELIVERED') {
-      return 'Delivered';
-    }
-
-    return 'Sent';
-  }
-
-  private findMessageReference(messageId: string | null | undefined): MessageReference | null {
-    if (!messageId) {
-      return null;
-    }
-
-    const message = this.messages().find((candidate) => candidate.id === messageId);
-
-    if (!message) {
-      return null;
-    }
-
-    return {
-      id: message.id,
-      senderFullName: message.sender.fullName,
-      content: message.content,
-    };
   }
 
   private applyUpdatedChat(updatedChat: Chat): void {
@@ -1183,42 +577,6 @@ export class ChatComponent {
         },
         error: (err) => console.error('Could not reload messages', err),
       });
-  }
-
-  private userToAddable(user: User): AddableGroupMember {
-    return {
-      id: user.id,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      fullName: `${user.firstName} ${user.lastName}`.trim(),
-      phoneNumber: user.phoneNumber,
-      pfpUrl: user.pfpUrl,
-      lastActiveAt: user.lastActiveAt,
-    };
-  }
-
-  private memberToAddable(member: ChatMember): AddableGroupMember {
-    return {
-      id: member.userId,
-      username: member.username,
-      firstName: member.firstName,
-      lastName: member.lastName,
-      fullName: member.fullName,
-      phoneNumber: member.phoneNumber,
-      pfpUrl: member.pfpUrl,
-      lastActiveAt: member.lastActiveAt,
-    };
-  }
-
-  private matchesAddableMemberSearch(user: AddableGroupMember, search: string): boolean {
-    return [
-      user.username,
-      user.firstName,
-      user.lastName,
-      this.getAddableMemberName(user),
-      user.phoneNumber ?? '',
-    ].some((value) => value.toLowerCase().includes(search));
   }
 
   private getErrorMessage(err: unknown, fallback: string): string {

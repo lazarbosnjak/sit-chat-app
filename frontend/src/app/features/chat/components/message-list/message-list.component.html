@@ -1,0 +1,244 @@
+<section #messagesContainer class="h-full overflow-y-auto p-6">
+  @if (messages().length === 0) {
+    <div class="flex h-full items-center justify-center text-gray-400">
+      Empty chat, send a message to start the conversation!
+    </div>
+  } @else {
+    <div class="flex flex-col gap-4">
+      @for (message of messages(); track message.id) {
+        @if (message.systemMessage) {
+          <div class="flex justify-center">
+            <div
+              class="max-w-[80%] rounded-full bg-gray-200 px-4 py-2 text-center text-xs text-gray-600"
+            >
+              <span>{{ message.content }}</span>
+              <span class="ml-2 text-gray-400">{{ formatMessageTime(message.createdAt) }}</span>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="group flex w-full items-end gap-2"
+            [class.flex-row-reverse]="isOwnMessage(message)"
+          >
+            <button
+              type="button"
+              class="shrink-0 rounded-full transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              [title]="message.sender.fullName"
+              [attr.aria-label]="message.sender.fullName"
+              (click)="openUserProfile.emit(message.sender.userId)"
+            >
+              <img
+                [src]="message.sender.pfpUrl"
+                alt="Profile picture"
+                class="h-9 w-9 rounded-full object-cover"
+              />
+            </button>
+
+            <div
+              class="flex max-w-[82%] flex-col"
+              [class.items-end]="isOwnMessage(message)"
+              [class.items-start]="!isOwnMessage(message)"
+            >
+              <div
+                class="flex max-w-full items-center gap-2"
+                [class.flex-row-reverse]="isOwnMessage(message)"
+              >
+                <div
+                  class="min-w-0 rounded-2xl px-4 py-2 text-sm shadow-sm"
+                  [class.rounded-br-sm]="isOwnMessage(message)"
+                  [class.rounded-bl-sm]="!isOwnMessage(message)"
+                  [class.bg-blue-600]="isOwnMessage(message)"
+                  [class.text-white]="isOwnMessage(message)"
+                  [class.bg-white]="!isOwnMessage(message)"
+                  [class.text-gray-900]="!isOwnMessage(message)"
+                >
+                  <button
+                    type="button"
+                    class="mb-1 block max-w-full truncate text-left text-xs font-bold"
+                    [class.text-blue-100]="isOwnMessage(message)"
+                    [class.text-gray-400]="!isOwnMessage(message)"
+                    (click)="openUserProfile.emit(message.sender.userId)"
+                  >
+                    {{ message.sender.fullName }}
+                  </button>
+
+                  @if (getReplyReference(message); as reply) {
+                    <div
+                      class="mb-2 rounded-lg border-l-4 px-3 py-2 text-left"
+                      [class.border-blue-200]="isOwnMessage(message)"
+                      [class.bg-blue-500]="isOwnMessage(message)"
+                      [class.text-blue-50]="isOwnMessage(message)"
+                      [class.border-blue-500]="!isOwnMessage(message)"
+                      [class.bg-gray-100]="!isOwnMessage(message)"
+                      [class.text-gray-700]="!isOwnMessage(message)"
+                    >
+                      <p class="text-xs font-semibold">{{ reply.senderFullName }}</p>
+                      <p
+                        class="mt-0.5 max-h-10 overflow-hidden whitespace-pre-wrap wrap-break-words text-xs"
+                      >
+                        {{ reply.content }}
+                      </p>
+                    </div>
+                  }
+
+                  @if (getForwardedReference(message); as forwarded) {
+                    <div
+                      class="mb-2 rounded-lg border-l-4 px-3 py-2 text-left"
+                      [class.border-blue-200]="isOwnMessage(message)"
+                      [class.bg-blue-500]="isOwnMessage(message)"
+                      [class.text-blue-50]="isOwnMessage(message)"
+                      [class.border-gray-300]="!isOwnMessage(message)"
+                      [class.bg-gray-100]="!isOwnMessage(message)"
+                      [class.text-gray-700]="!isOwnMessage(message)"
+                    >
+                      <p class="text-xs font-semibold">
+                        Forwarded from {{ forwarded.senderFullName }}
+                      </p>
+                      <p
+                        class="mt-0.5 max-h-10 overflow-hidden whitespace-pre-wrap wrap-break-words text-xs"
+                      >
+                        {{ forwarded.content }}
+                      </p>
+                    </div>
+                  }
+
+                  @if (isVoiceMessage(message)) {
+                    <div class="min-w-56 max-w-full">
+                      @if (getAudioUrl(message); as audioUrl) {
+                        <audio
+                          [src]="audioUrl"
+                          controls
+                          preload="metadata"
+                          class="h-10 w-64 max-w-full"
+                        ></audio>
+                      } @else {
+                        <div
+                          class="flex h-10 w-64 max-w-full items-center rounded-lg bg-black/5 px-3 text-xs"
+                          [class.text-blue-100]="isOwnMessage(message)"
+                          [class.text-gray-500]="!isOwnMessage(message)"
+                        >
+                          Loading audio...
+                        </div>
+                      }
+
+                      <p
+                        class="mt-1 text-xs"
+                        [class.text-blue-100]="isOwnMessage(message)"
+                        [class.text-gray-400]="!isOwnMessage(message)"
+                      >
+                        {{ formatAudioDuration(message.audioDurationMs) }}
+                      </p>
+                    </div>
+                  } @else if (shouldRenderContent(message)) {
+                    <p class="whitespace-pre-wrap wrap-break-words">
+                      {{ message.content }}
+                    </p>
+                  }
+
+                  <div
+                    class="mt-1 flex items-center justify-end gap-1 text-xs"
+                    [class.text-blue-100]="isOwnMessage(message)"
+                    [class.text-gray-400]="!isOwnMessage(message)"
+                  >
+                    @if (message.starredByMe) {
+                      <span title="Starred" aria-label="Starred">★</span>
+                    }
+
+                    <span>{{ formatMessageTime(message.createdAt) }}</span>
+
+                    @if (isOwnMessage(message)) {
+                      <span
+                        class="inline-flex min-w-4 justify-end font-semibold leading-none"
+                        [class.text-cyan-200]="message.deliveryStatus === 'READ'"
+                        [attr.aria-label]="getMessageStatusLabel(message.deliveryStatus)"
+                        [title]="getMessageStatusLabel(message.deliveryStatus)"
+                      >
+                        @if (message.deliveryStatus === 'SENT') {
+                          &#10003;
+                        } @else {
+                          &#10003;&#10003;
+                        }
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                <div
+                  class="flex shrink-0 items-center gap-1 rounded-full bg-white p-1 text-gray-600 shadow-sm opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100"
+                >
+                  <button
+                    type="button"
+                    class="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-gray-100"
+                    [class.text-yellow-500]="message.starredByMe"
+                    [title]="message.starredByMe ? 'Unstar' : 'Star'"
+                    [attr.aria-label]="message.starredByMe ? 'Unstar' : 'Star'"
+                    (click)="toggleStarred.emit(message)"
+                  >
+                    <svg
+                      lucideStar
+                      class="h-4 w-4"
+                      [class.fill-yellow-400]="message.starredByMe"
+                    ></svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-gray-100"
+                    title="Reply"
+                    aria-label="Reply"
+                    (click)="startReply.emit(message)"
+                  >
+                    <svg lucideReply class="h-4 w-4"></svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-gray-100"
+                    title="Forward"
+                    aria-label="Forward"
+                    (click)="openForward.emit(message)"
+                  >
+                    <svg lucideForward class="h-4 w-4"></svg>
+                  </button>
+
+                  @for (reaction of reactionOptions(); track reaction.type) {
+                    <button
+                      type="button"
+                      class="flex h-7 w-7 items-center justify-center rounded-full text-base transition hover:bg-gray-100"
+                      [title]="reaction.label"
+                      [attr.aria-label]="reaction.label"
+                      (click)="react.emit({ message, type: reaction.type })"
+                    >
+                      {{ reaction.emoji }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (message.reactions.length > 0) {
+                <div class="mt-1 flex flex-wrap gap-1" [class.justify-end]="isOwnMessage(message)">
+                  @for (reaction of message.reactions; track reaction.type) {
+                    <button
+                      type="button"
+                      class="inline-flex h-7 items-center gap-1 rounded-full border bg-white px-2 text-xs shadow-sm transition hover:bg-gray-50"
+                      [class.border-blue-300]="reaction.reactedByMe"
+                      [class.text-blue-700]="reaction.reactedByMe"
+                      [class.border-gray-200]="!reaction.reactedByMe"
+                      [class.text-gray-700]="!reaction.reactedByMe"
+                      [title]="labelForReaction(reaction.type)"
+                      [attr.aria-label]="labelForReaction(reaction.type)"
+                      (click)="react.emit({ message, type: reaction.type })"
+                    >
+                      <span>{{ emojiForReaction(reaction.type) }}</span>
+                      <span>{{ reaction.count }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+</section>

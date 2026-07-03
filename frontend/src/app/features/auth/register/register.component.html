@@ -2,84 +2,100 @@
   <div class="flex w-full max-w-md flex-col rounded-lg bg-white p-8 shadow-md">
     <h1 class="mb-6 text-center text-2xl font-bold">Register</h1>
 
-    <form [formGroup]="registerForm" (ngSubmit)="handleSubmit()" class="flex flex-col gap-4">
+    <form [formRoot]="registerForm" class="flex flex-col gap-4">
       <div class="flex flex-col gap-1">
         <label for="firstName" class="text-sm font-medium text-gray-700"> First Name </label>
         <input
-          required
           id="firstName"
           type="text"
-          formControlName="firstName"
+          [formField]="registerForm.firstName"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('firstName')"
+          [class.border-red-500]="showError(registerForm.firstName())"
         />
-        <!-- TODO: add invalid imports -->
+
+        @if (showError(registerForm.firstName())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.firstName()) }}</p>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="lastName" class="text-sm font-medium text-gray-700"> Last Name </label>
         <input
-          required
           id="lastName"
           type="text"
-          formControlName="lastName"
+          [formField]="registerForm.lastName"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('lastName')"
+          [class.border-red-500]="showError(registerForm.lastName())"
         />
+
+        @if (showError(registerForm.lastName())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.lastName()) }}</p>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="email" class="text-sm font-medium text-gray-700"> E-mail </label>
         <input
-          required
           id="email"
           type="email"
-          formControlName="email"
+          [formField]="registerForm.email"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('email')"
+          [class.border-red-500]="showError(registerForm.email())"
         />
+
+        @if (showError(registerForm.email())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.email()) }}</p>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="username" class="text-sm font-medium text-gray-700"> Username </label>
         <input
-          required
           id="username"
           type="text"
-          formControlName="username"
+          [formField]="registerForm.username"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('username')"
+          [class.border-red-500]="showError(registerForm.username())"
         />
+
+        @if (showError(registerForm.username())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.username()) }}</p>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="password" class="text-sm font-medium text-gray-700"> Password </label>
         <input
-          required
           id="password"
           type="password"
-          formControlName="password"
+          [formField]="registerForm.password"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('password')"
+          [class.border-red-500]="showError(registerForm.password())"
         />
+
+        @if (showError(registerForm.password())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.password()) }}</p>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="repeatedPassword" class="text-sm font-medium text-gray-700">
           Repeated password
         </label>
         <input
-          required
           id="repeatedPassword"
           type="password"
-          formControlName="repeatedPassword"
+          [formField]="registerForm.repeatedPassword"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('repeatedPassword')"
+          [class.border-red-500]="showError(registerForm.repeatedPassword())"
         />
+
+        @if (showError(registerForm.repeatedPassword())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.repeatedPassword()) }}</p>
+        }
       </div>
       <div class="flex flex-col gap-1">
         <label for="phoneNumber" class="text-sm font-medium text-gray-700"> Phone number </label>
         <input
           id="phoneNumber"
           type="text"
-          formControlName="phoneNumber"
+          [formField]="registerForm.phoneNumber"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('phoneNumber')"
         />
       </div>
       <div class="flex flex-col gap-1">
@@ -89,15 +105,18 @@
         <input
           id="pfpUrl"
           type="text"
-          formControlName="pfpUrl"
+          [formField]="registerForm.pfpUrl"
           class="rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none"
-          [class.border-red-500]="isInvalid('pfpUrl')"
+          [class.border-red-500]="showError(registerForm.pfpUrl())"
         />
+
+        @if (showError(registerForm.pfpUrl())) {
+          <p class="text-xs text-red-600">{{ firstError(registerForm.pfpUrl()) }}</p>
+        }
       </div>
 
       <button
         type="submit"
-        [disabled]="!registerForm.valid"
         class="rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 hover:cursor-pointer disabled:bg-blue-300 disabled:hover:cursor-not-allowed"
       >
         Sign In
@@ -111,3 +130,9 @@
     </div>
   </div>
 </div>
+
+@if (registerModal(); as modal) {
+  <app-modal [title]="modal.title" [variant]="modal.variant" (close)="closeRegisterModal()">
+    <p class="text-sm text-gray-700">{{ modal.message }}</p>
+  </app-modal>
+}

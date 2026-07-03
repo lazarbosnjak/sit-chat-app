@@ -1,0 +1,53 @@
+<header class="flex items-center gap-3 border-b border-gray-200 bg-white p-4">
+  @if (directRecipient(); as recipient) {
+    <button
+      type="button"
+      class="shrink-0 rounded-full transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      [title]="recipient.fullName"
+      [attr.aria-label]="recipient.fullName"
+      (click)="openUserProfile.emit(recipient.userId)"
+    >
+      <img [src]="image()" alt="Profile picture" class="h-10 w-10 rounded-full object-cover" />
+    </button>
+
+    <button
+      type="button"
+      class="min-w-0 text-left"
+      (click)="openUserProfile.emit(recipient.userId)"
+    >
+      <h2 class="truncate font-semibold">{{ title() }}</h2>
+      <p class="truncate text-sm text-gray-500">{{ recipient.status || 'No status set' }}</p>
+    </button>
+  } @else {
+    <button
+      type="button"
+      class="flex min-w-0 flex-1 items-center gap-3 text-left transition hover:opacity-85"
+      (click)="openGroupSettings.emit()"
+    >
+      @if (image()) {
+        <img [src]="image()" alt="Chat image" class="h-10 w-10 rounded-full object-cover" />
+      } @else {
+        <div
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700"
+        >
+          {{ title().charAt(0).toUpperCase() }}
+        </div>
+      }
+
+      <div class="min-w-0">
+        <h2 class="truncate font-semibold">{{ title() }}</h2>
+        <p class="truncate text-sm text-gray-500">{{ chat()?.description || 'Group chat' }}</p>
+      </div>
+    </button>
+
+    <button
+      type="button"
+      class="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100"
+      title="Group settings"
+      aria-label="Group settings"
+      (click)="openGroupSettings.emit()"
+    >
+      <svg lucideUsers class="h-5 w-5"></svg>
+    </button>
+  }
+</header>

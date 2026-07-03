@@ -1,0 +1,63 @@
+<footer class="border-t border-gray-200 bg-white p-4">
+  @if (replyingTo(); as reply) {
+    <div class="mb-3 flex items-stretch gap-2">
+      <div class="min-w-0 flex-1 rounded-lg border-l-4 border-blue-500 bg-gray-50 px-3 py-2">
+        <p class="text-xs font-semibold text-blue-700">Replying to {{ reply.sender.fullName }}</p>
+        <p class="mt-0.5 truncate text-sm text-gray-600">{{ reply.content }}</p>
+      </div>
+
+      <button
+        type="button"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100"
+        title="Cancel reply"
+        aria-label="Cancel reply"
+        (click)="cancelReply.emit()"
+      >
+        <svg lucideX class="h-5 w-5"></svg>
+      </button>
+    </div>
+  }
+
+  @if (audioRecordingError(); as error) {
+    <p class="mb-3 text-sm text-red-600">{{ error }}</p>
+  }
+
+  <form [formRoot]="messageForm" (submit)="sendMessage()" class="flex gap-3">
+    <button
+      type="button"
+      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+      [class.bg-red-600]="isRecordingAudio()"
+      [class.text-white]="isRecordingAudio()"
+      [class.bg-gray-100]="!isRecordingAudio()"
+      [class.text-gray-700]="!isRecordingAudio()"
+      [disabled]="isUploadingVoiceMessage()"
+      [title]="isRecordingAudio() ? 'Stop recording' : 'Record voice message'"
+      [attr.aria-label]="isRecordingAudio() ? 'Stop recording' : 'Record voice message'"
+      (click)="toggleAudioRecording.emit()"
+    >
+      @if (isRecordingAudio()) {
+        <svg lucideSquare class="h-4 w-4 fill-current"></svg>
+      } @else {
+        <svg lucideMic class="h-5 w-5"></svg>
+      }
+    </button>
+
+    <input
+      [formField]="messageForm.content"
+      type="text"
+      placeholder="Type a message..."
+      autocomplete="off"
+      class="flex-1 rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-blue-500"
+    />
+
+    <button
+      type="submit"
+      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+      [disabled]="!messageModel().content.trim() || isRecordingAudio() || isUploadingVoiceMessage()"
+      title="Send"
+      aria-label="Send"
+    >
+      <svg lucideSend class="h-5 w-5"></svg>
+    </button>
+  </form>
+</footer>
