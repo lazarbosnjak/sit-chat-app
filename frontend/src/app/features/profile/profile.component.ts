@@ -10,6 +10,7 @@ import {
   maxLength,
   required,
 } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import { UserService } from '@core/services/user.service';
 import { User } from '@shared/types/api.types';
 
@@ -25,7 +26,7 @@ interface UpdateProfileModel {
 
 @Component({
   templateUrl: './profile.component.html',
-  imports: [FormField, FormRoot, DatePipe],
+  imports: [FormField, FormRoot, DatePipe, RouterLink],
 })
 export class ProfileComponent {
   private readonly userService = inject(UserService);

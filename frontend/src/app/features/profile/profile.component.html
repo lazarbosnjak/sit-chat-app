@@ -1,20 +1,29 @@
 <div class="flex min-h-screen bg-gray-100 text-gray-900">
   <main class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
-    <header class="flex items-center justify-between">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold">Profile</h1>
         <p class="text-sm text-gray-500">Manage your account information</p>
       </div>
 
-      @if (!updateProfileEnabled()) {
-        <button
-          type="button"
-          (click)="updateProfileEnabled.set(true)"
-          class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          routerLink="/"
+          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200"
         >
-          Edit profile
-        </button>
-      }
+          Back to home
+        </a>
+
+        @if (!updateProfileEnabled()) {
+          <button
+            type="button"
+            (click)="updateProfileEnabled.set(true)"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            Edit profile
+          </button>
+        }
+      </div>
     </header>
 
     <section class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
