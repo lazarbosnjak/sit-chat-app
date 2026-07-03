@@ -51,15 +51,6 @@
     </div>
   </div>
 
-  <!-- Search -->
-  <div class="border-b border-gray-200 p-4">
-    <input
-      type="text"
-      placeholder="Search chats..."
-      class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-    />
-  </div>
-
   <!-- Chat list -->
   <div class="min-h-0 flex-1 overflow-y-auto">
     @for (chat of chats(); track chat.id) {
@@ -125,7 +116,9 @@
           <p class="truncate text-sm font-medium text-gray-900 text-left">
             {{ currentUser()?.firstName + ' ' + currentUser()?.lastName }}
           </p>
-          <p class="text-xs text-gray-500 text-left">Status: N/A</p>
+          <p class="truncate text-xs text-gray-500 text-left">
+            {{ currentUser()?.status || 'No status set' }}
+          </p>
         </div>
       </button>
 
