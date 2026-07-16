@@ -1,6 +1,8 @@
-# SitApp
+# SitChatApp
 
-SitApp je veb aplikacija za razmenu poruka, multimedijalnog sadržaja i grupnu komunikaciju između korisnika. Projekat je rađen za predmete SVT i KVT.
+SitApp je veb aplikacija za razmenu poruka u realnom vremenu, multimedijalnog sadržaja i grupnu komunikaciju između korisnika.
+
+Projekat je rađen za predmete **Klijentske veb tehnologije** i **Serverske veb tehnologije** sa II godine smera "Softverske i informacione tehnologije" na Fakultetu tehničkih nauka na Univerzitetu u Novom Sadu.
 
 ## Tehnologije
 
@@ -19,6 +21,15 @@ SitApp je veb aplikacija za razmenu poruka, multimedijalnog sadržaja i grupnu k
 
 ## Pokretanje
 
+Pre pokretanja kopirati `.env.example` fajlove u odgovarajuce `.env` fajlove i popuniti lokalne vrednosti:
+
+```bash
+cp backend/.env.example backend/.env
+cp services/audio-service/.env.example services/audio-service/.env
+```
+
+Ako `.env` fajlove cuvate na drugim putanjama, promeniti `env_file` putanje u `docker-compose.yml`.
+
 Backend:
 
 ```bash
@@ -27,12 +38,10 @@ docker compose up --build
 
 Frontend:
 
+> Napomena: potrebno je imati **Node.js v22+**
+
 ```bash
 cd frontend
 pnpm install
 pnpm start
 ```
-
-## Napomene
-
-Pre pokretanja proveriti podešavanja baze i ostalih servisa u konfiguracionim fajlovima. Tajne podatke i lokalne kredencijale ne treba čuvati u repozitorijumu.
