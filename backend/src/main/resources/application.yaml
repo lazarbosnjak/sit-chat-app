@@ -29,6 +29,9 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
 
+server:
+  port: ${SERVER_PORT:8080}
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: 3600
