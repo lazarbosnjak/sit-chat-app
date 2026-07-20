@@ -45,3 +45,13 @@ cd frontend
 pnpm install
 pnpm start
 ```
+
+## Demo
+
+Možete pronaći demo na stranici: [https://kvt.lazarb.dev](https://kvt.lazarb.dev)
+
+| Username | Password |
+| -------- | -------- |
+| `admin`  | `admin123`  |
+| `luka`    | `password123`    |
+| `jovana`    | `password123`    |
